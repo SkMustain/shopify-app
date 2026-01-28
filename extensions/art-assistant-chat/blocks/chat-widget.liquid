@@ -1,0 +1,234 @@
+<div class="art-assistant-chat-wrapper">
+  <!-- Chat Button -->
+  <button id="art-assistant-chat-btn" class="chat-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>Art AI</span>
+  </button>
+
+  <!-- Chat Window -->
+  <div id="art-assistant-chat-window" class="chat-window hidden">
+    <div class="chat-header">
+      <h3>Art Assistant</h3>
+      <button id="art-assistant-close-btn" class="close-btn">&times;</button>
+    </div>
+    <div id="art-assistant-messages" class="chat-messages">
+      <div class="message bot">
+        Hello! I can help you find the perfect art. What are you looking for?
+      </div>
+    </div>
+    <div class="chat-input-area">
+      <input type="text" id="art-assistant-input" placeholder="Type a message..." />
+      <button id="art-assistant-send-btn">Send</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  .art-assistant-chat-wrapper {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 9999;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  
+  .chat-btn {
+    background-color: {{ block.settings.color }};
+    color: white;
+    border: none;
+    border-radius: 50px;
+    padding: 12px 20px;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: bold;
+    transition: transform 0.2s;
+  }
+  
+  .chat-btn:hover {
+    transform: scale(1.05);
+  }
+
+  .chat-window {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    width: 320px;
+    height: 400px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+
+  .chat-window.hidden {
+    display: none;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .chat-header {
+    background-color: {{ block.settings.color }};
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .chat-header h3 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+  }
+
+  .chat-messages {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-color: #f9f9f9;
+  }
+
+  .message {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .message.bot {
+    background-color: #e0e0e0;
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+    color: #333;
+  }
+
+  .message.user {
+    background-color: {{ block.settings.color }};
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+  }
+
+  .chat-input-area {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+  }
+
+  #art-assistant-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    outline: none;
+  }
+
+  #art-assistant-send-btn {
+    background-color: {{ block.settings.color }};
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const chatBtn = document.getElementById('art-assistant-chat-btn');
+    const chatWindow = document.getElementById('art-assistant-chat-window');
+    const closeBtn = document.getElementById('art-assistant-close-btn');
+    const sendBtn = document.getElementById('art-assistant-send-btn');
+    const input = document.getElementById('art-assistant-input');
+    const messagesContainer = document.getElementById('art-assistant-messages');
+
+    // Toggle Chat
+    chatBtn.addEventListener('click', () => {
+      chatWindow.classList.toggle('hidden');
+    });
+
+    closeBtn.addEventListener('click', () => {
+      chatWindow.classList.add('hidden');
+    });
+
+    // Send Message
+    async function sendMessage() {
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Add user message
+      addMessage(text, 'user');
+      input.value = '';
+      input.focus();
+
+      // Show typing indicator or wait...
+      
+      try {
+        // Fetch from App Proxy
+        const response = await fetch('/apps/art-assistant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: text })
+        });
+
+        if (!response.ok) throw new Error('Network error');
+
+        const data = await response.json();
+        addMessage(data.reply || "Sorry, I couldn't understand that.", 'bot');
+
+      } catch (error) {
+        console.error('Chat error:', error);
+        addMessage("Sorry, I'm having trouble connecting to the Art Assistant.", 'bot');
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    function addMessage(text, sender) {
+      const div = document.createElement('div');
+      div.classList.add('message', sender);
+      div.textContent = text;
+      messagesContainer.appendChild(div);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+  });
+</script>
+
+{% schema %}
+{
+  "name": "Art Assistant Chat",
+  "target": "body",
+  "settings": [
+    {
+      "type": "color",
+      "id": "color",
+      "label": "Theme Color",
+      "default": "#000000"
+    }
+  ]
+}
+{% endschema %}

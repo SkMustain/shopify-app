@@ -2,12 +2,11 @@
 
 client_id = "4721869946c5345115a53c4cc8c5bd09"
 name = "art-assistant"
-application_url = "http://localhost:3000"
+application_url = "https://art-assistant.onrender.com"
 embedded = true
 
 [build]
-automatically_update_urls_on_dev = false
-include_config_on_deploy = true
+automatically_update_urls_on_dev = true
 
 [webhooks]
 api_version = "2026-04"
@@ -24,5 +23,10 @@ api_version = "2026-04"
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "write_products"
 
+[app_proxy]
+url = "https://art-assistant.onrender.com/api/proxy"
+subpath = "art-assistant"
+prefix = "apps"
+
 [auth]
-redirect_urls = [ "http://localhost:3000/auth/callback", "http://localhost:3000/auth/shopify/callback", "http://localhost:3000/api/auth/callback" ]
+redirect_urls = [ "https://art-assistant.onrender.com/auth/callback", "https://art-assistant.onrender.com/auth/shopify/callback", "https://art-assistant.onrender.com/api/auth/callback" ]
