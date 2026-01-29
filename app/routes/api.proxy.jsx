@@ -82,13 +82,24 @@ export const action = async ({ request }) => {
             inlineData: { data: base64Data, mimeType: "image/jpeg" },
           };
 
-          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Do not use markdown.";
+          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Return ONLY the JSON string, no markdown formatting.";
 
           const { result, modelName } = await generateWithFallback(prompt, imagePart);
 
           const text = result.response.text();
-          const cleanText = text.replace(/```json|```/g, '').trim();
-          const json = JSON.parse(cleanText);
+          console.log("Raw Gemini Output:", text); // Debug log
+
+          // Robust JSON extraction: Find first { and last }
+          const start = text.indexOf('{');
+          const end = text.lastIndexOf('}');
+
+          let json;
+          if (start !== -1 && end !== -1) {
+            const jsonString = text.substring(start, end + 1);
+            json = JSON.parse(jsonString);
+          } else {
+            throw new Error("Invalid JSON structure in response: " + text);
+          }
 
           searchQuery = json.searchQuery || "Abstract Art";
           replyPrefix = `I analyzed your room using Gemini Vision (${modelName})! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
