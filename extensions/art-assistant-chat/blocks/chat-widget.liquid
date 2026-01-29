@@ -426,11 +426,27 @@
 
     .art-assistant-input-area {
         padding: 8px;
+        gap: 6px; /* Reduce gap */
     }
 
     .art-assistant-input-area input {
         font-size: 13px;
         padding: 8px 10px;
+        min-width: 0; /* Critical for flex shrinking */
+    }
+
+    /* Smaller Upload Button */
+    .art-assistant-icon-btn {
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+    }
+
+    /* Compact Send Button */
+    #art-assistant-send-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+        flex-shrink: 0;
     }
     
     .art-assistant-toggle-btn {
