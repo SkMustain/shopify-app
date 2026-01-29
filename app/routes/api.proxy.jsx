@@ -58,8 +58,8 @@ export const action = async ({ request }) => {
 
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
-            // Try specific versions first, then aliases
-            const modelsToTry = ["gemini-1.5-flash-001", "gemini-1.5-flash", "gemini-1.5-pro-001", "gemini-pro-vision"];
+            // Updated to use the models explicitly listed by the user
+            const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-flash-latest", "gemini-1.5-flash"];
             let errorLog = [];
 
             for (const modelName of modelsToTry) {
@@ -73,21 +73,6 @@ export const action = async ({ request }) => {
                 errorLog.push(`${modelName}: ${e.message}`);
               }
             }
-
-            // If all failed, try to list available models to debug
-            try {
-              const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKeySetting.value}`);
-              const listJson = await listResp.json();
-              if (listJson.models) {
-                const availableModels = listJson.models.map(m => m.name).join(", ");
-                errorLog.push(`AVAILABLE MODELS: ${availableModels}`);
-              } else {
-                errorLog.push(`LIST MODELS FAILED: ${JSON.stringify(listJson)}`);
-              }
-            } catch (listErr) {
-              errorLog.push(`LIST FETCH ERROR: ${listErr.message}`);
-            }
-
             throw new Error(errorLog.join(" | "));
           };
 
