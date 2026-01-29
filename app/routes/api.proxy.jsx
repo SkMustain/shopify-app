@@ -9,7 +9,7 @@ export const loader = async ({ request }) => {
         return new Response("Unauthorized", { status: 401 });
     }
 
-    return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors.headers });
+    return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors?.headers || {} });
 };
 
 export const action = async ({ request }) => {
@@ -66,7 +66,7 @@ export const action = async ({ request }) => {
             };
         }
 
-        return Response.json(responseData, { headers: cors.headers });
+        return Response.json(responseData, { headers: cors?.headers || {} });
 
     } catch (error) {
         console.error("Proxy Error:", error);
