@@ -24,12 +24,27 @@ export const loader = async ({ request }) => {
   // 3. Fetch Config
   const configs = await prisma.vastuConfig.findMany();
 
-  return { directionCounts, images, configs };
+  // 4. Fetch Settings
+  const apiKey = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+
+  return { directionCounts, images, configs, apiKey: apiKey?.value || "" };
 };
 
 export const action = async ({ request }) => {
   await authenticate.admin(request);
   const formData = await request.formData();
+
+  // Handle API Key Save
+  const apiKey = formData.get("apiKey");
+  if (apiKey !== null) {
+    await prisma.appSetting.upsert({
+      where: { key: "GEMINI_API_KEY" },
+      update: { value: apiKey },
+      create: { key: "GEMINI_API_KEY", value: apiKey }
+    });
+    return { status: "saved_key" };
+  }
+
   const direction = formData.get("direction");
   const recommendation = formData.get("recommendation");
   const keywords = formData.get("keywords");
@@ -45,13 +60,20 @@ export const action = async ({ request }) => {
 };
 
 export default function Index() {
-  const { directionCounts, images, configs } = useLoaderData();
+  const { directionCounts, images, configs, apiKey: initialKey } = useLoaderData();
   const fetcher = useFetcher();
 
   // Config State
   const [selectedDir, setSelectedDir] = useState("North");
   const [rec, setRec] = useState("");
   const [keys, setKeys] = useState("");
+
+  // API Key State
+  const [geminiKey, setGeminiKey] = useState(initialKey);
+
+  const saveKey = () => {
+    fetcher.submit({ apiKey: geminiKey }, { method: "POST" });
+  };
 
   const handleDirChange = (dir) => {
     setSelectedDir(dir);
@@ -103,6 +125,28 @@ export default function Index() {
                   </div>
                 ))}
                 {images.length === 0 && <Text tone="subdued">No images uploaded yet.</Text>}
+              </InlineGrid>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
+        {/* API CONFIG SECTION */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text as="h2" variant="headingMd">Vision AI Configuration</Text>
+              <InlineGrid columns={["twoThirds", "oneThird"]} gap="400">
+                <TextField
+                  label="Gemini API Key"
+                  type="password"
+                  value={geminiKey}
+                  onChange={setGeminiKey}
+                  helpText="Get a key from Google AI Studio to enable real image analysis."
+                  autoComplete="off"
+                />
+                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                  <Button onClick={saveKey} loading={fetcher.state === "submitting"}>Save Key</Button>
+                </div>
               </InlineGrid>
             </BlockStack>
           </Card>

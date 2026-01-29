@@ -53,3 +53,9 @@ model VastuConfig {
   recommendation String
   keywords       String
 }
+
+model AppSetting {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}

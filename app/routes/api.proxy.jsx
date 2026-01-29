@@ -44,29 +44,63 @@ export const action = async ({ request }) => {
     let searchQuery = "";
     let replyPrefix = ""; // To prepend to the carousel intro
 
-    // 1. VISUAL SEARCH (Mocked)
+    // 1. VISUAL SEARCH
     if (userImage) {
-      // Log image (Store simplified/truncated data to avoid huge DBs for demo)
+      let analysisResult = "";
+
+      // Try fetching API Key
+      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+
+      if (apiKeySetting && apiKeySetting.value) {
+        try {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          const genAI = new GoogleGenerativeAI(apiKeySetting.value);
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+          // Prepare image (Base64 removal)
+          const base64Data = userImage.split(',')[1];
+          const imagePart = {
+            inlineData: { data: base64Data, mimeType: "image/jpeg" },
+          };
+
+          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Do not use markdown.";
+
+          const result = await model.generateContent([prompt, imagePart]);
+          const text = result.response.text();
+          const cleanText = text.replace(/```json|```/g, '').trim();
+          const json = JSON.parse(cleanText);
+
+          searchQuery = json.searchQuery || "Abstract Art";
+          replyPrefix = `I analyzed your room using Gemini Vision! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
+          analysisResult = `Real Analysis: ${json.style} / ${json.colors}`;
+          shouldSearch = true;
+
+        } catch (e) {
+          console.error("Gemini Error:", e);
+          searchQuery = "Modern Art";
+          replyPrefix = "I had trouble seeing the image clearly, but here are some modern picks:";
+          analysisResult = "Error: " + e.message;
+          shouldSearch = true;
+        }
+      } else {
+        // FALLBACK MOCK
+        const styles = ["Abstract", "Landscape", "Nature", "Modern"];
+        const colors = ["Blue", "Gold", "Red", "Green"];
+        const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
+        const detectedColor = colors[Math.floor(Math.random() * colors.length)];
+
+        searchQuery = `${detectedStyle} Art`;
+        replyPrefix = `I analyzed the composition (Mock). The room has **${detectedStyle}** elements with **${detectedColor}** undertones.`;
+        analysisResult = `Mock Analysis: ${detectedStyle}`;
+        shouldSearch = true;
+      }
+
       await prisma.customerImage.create({
         data: {
-          imageData: userImage.substring(0, 100) + "...", // Truncate for log
-          analysisResult: "Mock Analysis: Modern / Abstract"
+          imageData: userImage.substring(0, 100) + "...",
+          analysisResult: analysisResult
         }
       });
-
-      // KEY CHANGE: Use broader terms that are more likely to match product titles/tags
-      const styles = ["Abstract", "Landscape", "Nature", "Modern"];
-      const colors = ["Blue", "Gold", "Red", "Green"];
-
-      const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
-      const detectedColor = colors[Math.floor(Math.random() * colors.length)];
-
-      // Construct a broader query (e.g., "Abstract Art" or "Blue Painting") vs specific 3-term string
-      searchQuery = `${detectedStyle} Art`;
-      // Option: You could try `${detectedStyle} ${detectedColor}` if your catalog is rich enough.
-
-      replyPrefix = `I've analyzed the wall composition and light. The room has **${detectedStyle}** elements with **${detectedColor}** undertones. Based on this, I've curated these matches:`;
-      shouldSearch = true;
     }
 
     // 2. HELP / ACTIONS
