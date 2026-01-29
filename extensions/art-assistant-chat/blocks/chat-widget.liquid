@@ -32,226 +32,273 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    z-index: 9999;
+    z-index: 2147483647; /* Max z-index to stay on top */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
   }
   
-  .chat-btn {
+  .art-assistant-chat-wrapper * {
+    box-sizing: border-box;
+  }
+
+  .art-assistant-chat-btn {
     background-color: {{ block.settings.color }};
     color: white;
     border: none;
     border-radius: 50px;
     padding: 12px 20px;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     display: flex;
     align-items: center;
     gap: 8px;
     font-weight: bold;
-    transition: transform 0.2s;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-size: 16px;
   }
   
-  .chat-btn:hover {
+  .art-assistant-chat-btn:hover {
     transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.3);
   }
 
-  .chat-window {
+  .art-assistant-chat-window {
     position: absolute;
-    bottom: 70px;
+    bottom: 80px;
     right: 0;
-    width: 320px;
-    height: 400px;
+    width: 350px;
+    height: 500px;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    border-radius: 16px;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     transition: opacity 0.3s, transform 0.3s;
+    opacity: 1;
+    transform: translateY(0);
   }
 
-  .chat-window.hidden {
+  .art-assistant-chat-window.hidden {
     display: none;
     opacity: 0;
+    transform: translateY(20px);
     pointer-events: none;
   }
 
-  .chat-header {
+  .art-assistant-chat-header {
     background-color: {{ block.settings.color }};
     color: white;
-    padding: 15px;
+    padding: 16px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
   }
 
-  .chat-header h3 {
+  .art-assistant-chat-header h3 {
     margin: 0;
-    font-size: 16px;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
   }
 
-  .close-btn {
+  .art-assistant-close-btn {
     background: none;
     border: none;
     color: white;
-    font-size: 20px;
+    font-size: 24px;
     cursor: pointer;
+    line-height: 1;
+    padding: 0;
   }
 
-  .chat-messages {
+  .art-assistant-messages {
     flex: 1;
-    padding: 15px;
+    padding: 16px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    background-color: #f9f9f9;
+    gap: 12px;
+    background-color: #f5f5f5;
   }
 
-  .message {
-    max-width: 80%;
-    padding: 10px 14px;
-    border-radius: 12px;
-    font-size: 14px;
+  .art-assistant-message {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 15px;
     line-height: 1.4;
+    word-wrap: break-word;
   }
 
-  .message.bot {
-    background-color: #e0e0e0;
+  .art-assistant-message.bot {
+    background-color: white;
     align-self: flex-start;
-    border-bottom-left-radius: 2px;
+    border-bottom-left-radius: 4px;
     color: #333;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   }
 
-  .message.user {
+  .art-assistant-message.user {
     background-color: {{ block.settings.color }};
     color: white;
     align-self: flex-end;
-    border-bottom-right-radius: 2px;
+    border-bottom-right-radius: 4px;
   }
 
-  .chat-input-area {
-    padding: 10px;
+  .art-assistant-chat-input-area {
+    padding: 12px;
     border-top: 1px solid #eee;
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
     background: white;
   }
 
-  .icon-btn {
+  .art-assistant-icon-btn {
     background: none;
     border: none;
     cursor: pointer;
-    padding: 5px;
+    padding: 8px;
     display: flex;
     align-items: center;
+    border-radius: 50%;
+    transition: background 0.2s;
   }
   
-  .icon-btn:hover svg {
-    stroke: {{ block.settings.color }};
+  .art-assistant-icon-btn:hover {
+    background: #f0f0f0;
+  }
+  
+  .art-assistant-icon-btn svg {
+    stroke: #555;
   }
 
   #art-assistant-input {
     flex: 1;
-    padding: 10px;
+    padding: 12px;
     border: 1px solid #ddd;
-    border-radius: 20px;
+    border-radius: 24px;
     outline: none;
-    font-size: 14px;
+    font-size: 15px;
+    background: #f9f9f9;
+  }
+  
+  #art-assistant-input:focus {
+    border-color: {{ block.settings.color }};
+    background: white;
   }
 
   #art-assistant-send-btn {
     background-color: {{ block.settings.color }};
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
+    padding: 10px 20px;
+    border-radius: 24px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
   }
   
   /* Actions */
-  .actions-container {
+  .art-assistant-actions-container {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin: 10px 0;
-    justify-content: flex-end;
+    margin: 8px 0;
+    justify-content: flex-start; /* Align actions to start */
+    width: 100%;
   }
   
-  .action-btn {
+  .art-assistant-action-btn {
     background: white;
     border: 1px solid {{ block.settings.color }};
     color: {{ block.settings.color }};
-    padding: 6px 12px;
-    border-radius: 15px;
+    padding: 8px 14px;
+    border-radius: 20px;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s;
+    font-weight: 500;
   }
   
-  .action-btn:hover {
+  .art-assistant-action-btn:hover {
     background: {{ block.settings.color }};
     color: white;
   }
   
   /* Carousel */
-  .carousel-container {
+  .art-assistant-carousel-container {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     overflow-x: auto;
-    padding: 10px 0;
+    padding: 12px 4px 16px 4px; /* Bottom padding for scrollbar */
     width: 100%;
     scrollbar-width: thin;
+    scroll-behavior: smooth;
   }
   
-  .product-card {
-    min-width: 140px;
-    width: 140px;
+  .art-assistant-product-card {
+    min-width: 160px;
+    width: 160px;
     background: white;
     border: 1px solid #eee;
-    border-radius: 8px;
+    border-radius: 12px;
     overflow: hidden;
     flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+    display: flex;
+    flex-direction: column;
   }
   
-  .product-card img {
+  .art-assistant-product-card img {
     width: 100%;
-    height: 100px;
+    height: 120px;
     object-fit: cover;
+    border-bottom: 1px solid #eee;
   }
   
-  .p-details {
-    padding: 8px;
+  .art-assistant-p-details {
+    padding: 10px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
   }
   
-  .p-details h4 {
-    margin: 0 0 5px;
-     font-size: 12px;
-     white-space: nowrap;
-     overflow: hidden;
-     text-overflow: ellipsis;
+  .art-assistant-p-details h4 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    color: #333;
   }
   
-  .p-details .price {
+  .art-assistant-p-details .price {
     display: block;
-    font-size: 12px;
+    font-size: 13px;
     color: #666;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
   }
   
-  .buy-btn {
+  .art-assistant-buy-btn {
     display: block;
     text-decoration: none;
-    background: #333;
-    color: white;
-    font-size: 11px;
-    padding: 4px;
-    border-radius: 4px;
+    background: #000;
+    color: white !important;
+    font-size: 12px;
+    padding: 6px;
+    border-radius: 6px;
+    font-weight: bold;
+    transition: opacity 0.2s;
+  }
+  
+  .art-assistant-buy-btn:hover {
+    opacity: 0.8;
   }
 </style>
 
@@ -272,7 +319,6 @@
     chatBtn.addEventListener('click', () => {
       chatWindow.classList.toggle('hidden');
       if (!chatWindow.classList.contains('hidden') && messagesContainer.children.length <= 1) {
-          // Show initial quick actions if chat is empty (except welcome msg)
           showQuickActions();
       }
     });
@@ -356,7 +402,7 @@
 
     function addMessage(msg, sender) {
       const div = document.createElement('div');
-      div.classList.add('message', sender);
+      div.classList.add('art-assistant-message', sender);
       
       if (msg.type === 'image') {
           const img = document.createElement('img');
@@ -374,17 +420,17 @@
 
     function addCarousel(products) {
         const container = document.createElement('div');
-        container.classList.add('carousel-container');
+        container.classList.add('art-assistant-carousel-container');
         
         products.forEach(prod => {
             const card = document.createElement('div');
-            card.classList.add('product-card');
+            card.classList.add('art-assistant-product-card');
             card.innerHTML = `
                 <img src="${prod.image}" alt="${prod.title}">
-                <div class="p-details">
+                <div class="art-assistant-p-details">
                     <h4>${prod.title}</h4>
                     <span class="price">${prod.price}</span>
-                    <a href="${prod.url || '#'}" target="_blank" class="buy-btn">View</a>
+                    <a href="${prod.url || '#'}" target="_blank" class="art-assistant-buy-btn">View</a>
                 </div>
             `;
             container.appendChild(card);
@@ -395,12 +441,13 @@
 
     function addActions(actions) {
         const container = document.createElement('div');
-        container.classList.add('actions-container');
+        container.classList.add('art-assistant-actions-container');
         
         actions.forEach(action => {
             const btn = document.createElement('button');
-            btn.classList.add('action-btn');
+            btn.classList.add('art-assistant-action-btn');
             btn.textContent = action.label;
+            // Send payload as simple keyword if available, else label
             btn.onclick = () => sendMessage(action.payload || action.label);
             container.appendChild(btn);
         });
@@ -410,15 +457,15 @@
 
     function showQuickActions() {
         addActions([
-            { label: "Help me choose", payload: "Help me choose art for my room" },
-            { label: "Vastu Guide", payload: "Show me Vastu compliant paintings" },
-            { label: "Upload Photo", payload: "I want to upload a photo" } 
+            { label: "Help me choose", payload: "help" },
+            { label: "Vastu Guide", payload: "Vastu" },
+            { label: "Abstract Art", payload: "Abstract" } 
         ]);
     }
 
     function addTypingIndicator() {
         const div = document.createElement('div');
-        div.classList.add('message', 'bot', 'typing');
+        div.classList.add('art-assistant-message', 'bot', 'typing');
         div.textContent = '...';
         div.id = 'typing-' + Date.now();
         appendAndScroll(div);

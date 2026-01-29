@@ -52,8 +52,21 @@ export const action = async ({ request }) => {
         }
         // 3. Handle Text Search (Real Shopify Data)
         else {
-            // Default search query if message is too short
-            const searchQuery = userMessage.length > 2 ? userMessage : "art";
+            // Clean up the search query
+            let searchQuery = userMessage;
+            const stopWords = ["show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant", "guide", "help", "choose", "products"];
+
+            // If the query is long (not just a keyword like "vastu"), try to extract keywords
+            if (userMessage.split(" ").length > 2) {
+                searchQuery = userMessage.split(" ")
+                    .filter(word => !stopWords.includes(word.toLowerCase()))
+                    .join(" ")
+                    .trim();
+            }
+
+            // Fallback if cleaning removed everything
+            if (searchQuery.length < 2) searchQuery = "art";
+
             console.log("Searching Shopify for:", searchQuery);
 
             const response = await admin.graphql(
@@ -65,6 +78,7 @@ export const action = async ({ request }) => {
                         id
                         title
                         handle
+                        description(truncateAt: 60)
                         priceRangeV2 {
                           minVariantPrice {
                             amount
