@@ -16,6 +16,10 @@
         Hello! I can help you find the perfect art. What are you looking for?
       </div>
     </div>
+    <div id="art-assistant-preview-area" class="art-assistant-preview-area hidden">
+       <img id="art-assistant-preview-img" src="" alt="Preview" />
+       <button id="art-assistant-clear-preview" class="art-assistant-clear-btn">&times;</button>
+    </div>
     <div class="art-assistant-chat-input-area">
       <input type="file" id="art-assistant-file-input" accept="image/*" style="display: none;" />
       <button id="art-assistant-upload-btn" class="art-assistant-icon-btn">
@@ -164,6 +168,49 @@
     color: white;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
+  }
+
+  /* Preview Area */
+  .art-assistant-preview-area {
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideUp 0.2s ease-out;
+  }
+  
+  .art-assistant-preview-area.hidden {
+      display: none;
+  }
+  
+  .art-assistant-preview-area img {
+      height: 60px;
+      width: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+  }
+  
+  .art-assistant-clear-btn {
+      background: white;
+      border: 1px solid #cbd5e0;
+      color: #718096;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+  }
+  
+  @keyframes slideUp {
+      from { transform: translateY(10px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
   }
 
   /* Input Area */
@@ -386,6 +433,11 @@
 
     // Image Upload
     uploadBtn.addEventListener('click', () => fileInput.click());
+    
+    // Preview Elements
+    const previewArea = document.getElementById('art-assistant-preview-area');
+    const previewImg = document.getElementById('art-assistant-preview-img');
+    const clearPreviewBtn = document.getElementById('art-assistant-clear-preview');
 
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -393,11 +445,21 @@
         const reader = new FileReader();
         reader.onload = function(e) {
           selectedImage = e.target.result; // Base64
-          input.placeholder = "Image selected. Type a message...";
+          // Show Preview
+          previewImg.src = selectedImage;
+          previewArea.classList.remove('hidden');
+          input.placeholder = "Describe your room or send widely...";
           input.focus();
         };
         reader.readAsDataURL(file);
       }
+    });
+    
+    clearPreviewBtn.addEventListener('click', () => {
+        selectedImage = null;
+        fileInput.value = "";
+        previewArea.classList.add('hidden');
+        input.placeholder = "Type a message...";
     });
 
     // Send Message
@@ -417,8 +479,11 @@
       input.value = '';
       input.placeholder = "Type a message...";
       const imageToSend = selectedImage;
-      selectedImage = null; // Reset
-      fileInput.value = ""; // Reset file input
+      
+      // Reset State
+      selectedImage = null; 
+      fileInput.value = ""; 
+      if (previewArea) previewArea.classList.add('hidden');
 
       // Show typing indicator
       const typingId = addTypingIndicator();

@@ -65,7 +65,7 @@ export const action = async ({ request }) => {
       searchQuery = `${detectedStyle} Art`;
       // Option: You could try `${detectedStyle} ${detectedColor}` if your catalog is rich enough.
 
-      replyPrefix = `I analyzed your room! I see a **${detectedStyle}** style with **${detectedColor}** tones.`;
+      replyPrefix = `I've analyzed the wall composition and light. The room has **${detectedStyle}** elements with **${detectedColor}** undertones. Based on this, I've curated these matches:`;
       shouldSearch = true;
     }
 
