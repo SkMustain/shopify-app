@@ -53,11 +53,16 @@ export const action = async ({ request }) => {
     // 3. Handle Text Search (Real Shopify Data)
     else {
       // Clean up the search query
+      // Clean up the search query
       let searchQuery = userMessage;
-      const stopWords = ["show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant", "guide", "help", "choose", "products"];
+      const stopWords = [
+        "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
+        "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
+        "advice", "room", "wall", "decor"
+      ];
 
       // If the query is long (not just a keyword like "vastu"), try to extract keywords
-      if (userMessage.split(" ").length > 2) {
+      if (userMessage.split(" ").length > 1) {
         searchQuery = userMessage.split(" ")
           .filter(word => !stopWords.includes(word.toLowerCase()))
           .join(" ")
