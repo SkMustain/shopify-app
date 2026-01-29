@@ -327,7 +327,10 @@
           body: JSON.stringify({ message: messageText, image: imageToSend })
         });
 
-        if (!response.ok) throw new Error('Network error');
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Status: ${response.status} ${errText}`);
+        }
 
         const data = await response.json();
         removeMessage(typingId);
@@ -340,7 +343,7 @@
       } catch (error) {
         console.error('Chat error:', error);
         removeMessage(typingId);
-        addMessage({ type: 'text', content: "Sorry, I'm having trouble connecting." }, 'bot');
+        addMessage({ type: 'text', content: `Error: ${error.message}` }, 'bot');
       }
     }
 
