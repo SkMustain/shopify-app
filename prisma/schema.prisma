@@ -32,3 +32,24 @@ model Session {
   refreshToken        String?
   refreshTokenExpires DateTime?
 }
+
+model VastuLog {
+  id        Int      @id @default(autoincrement())
+  direction String
+  query     String
+  createdAt DateTime @default(now())
+}
+
+model CustomerImage {
+  id             Int      @id @default(autoincrement())
+  imageData      String   // Storing Base64 or URL
+  analysisResult String?
+  createdAt      DateTime @default(now())
+}
+
+model VastuConfig {
+  id             Int      @id @default(autoincrement())
+  direction      String   @unique
+  recommendation String
+  keywords       String
+}

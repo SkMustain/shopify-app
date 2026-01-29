@@ -25,6 +25,20 @@ export const action = async ({ request }) => {
     const userMessage = (payload.message || "").toLowerCase();
     const userImage = payload.image;
 
+    // Import Prisma (ensure db.server.js exists/exports it)
+    const { default: prisma } = await import("../db.server");
+
+    // Fetch Vastu Config (with defaults)
+    const vastuConfig = await prisma.vastuConfig.findMany();
+    const getConfig = (dir) => vastuConfig.find(c => c.direction === dir) || {
+      recommendation: dir === "North" || dir === "East" ? "Waterfalls or Nature (Growth)" :
+        dir === "South" ? "running horses or fire themes (Success)" :
+          "mountains or birds (Stability)",
+      keywords: dir === "North" || dir === "East" ? "waterfall landscape nature" :
+        dir === "South" ? "running horses fire abstract red" :
+          "mountains birds landscape"
+    };
+
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
     let shouldSearch = false; // Flag to determine if we run the GQL query
     let searchQuery = "";
@@ -32,6 +46,14 @@ export const action = async ({ request }) => {
 
     // 1. VISUAL SEARCH (Mocked)
     if (userImage) {
+      // Log image (Store simplified/truncated data to avoid huge DBs for demo)
+      await prisma.customerImage.create({
+        data: {
+          imageData: userImage.substring(0, 100) + "...", // Truncate for log
+          analysisResult: "Mock Analysis: Modern / Blue"
+        }
+      });
+
       const styles = ["Modern", "Traditional", "Minimalist"];
       const colors = ["Blue", "Warm", "Monochrome"];
       const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
@@ -59,18 +81,21 @@ export const action = async ({ request }) => {
 
     // 3. VASTU LOGIC
     else if (userMessage.includes("vastu")) {
-      if (userMessage.includes("north") || userMessage.includes("east")) {
-        replyPrefix = "For North/East walls, I recommend Waterfalls or Nature (Growth).";
-        searchQuery = "waterfall landscape nature";
+      let direction = "";
+      if (userMessage.includes("north") || userMessage.includes("east")) direction = "North";
+      else if (userMessage.includes("south")) direction = "South";
+      else if (userMessage.includes("west") || userMessage.includes("stability")) direction = "West";
+
+      if (direction) {
+        const conf = getConfig(direction);
+        replyPrefix = `For ${direction} walls, I recommend ${conf.recommendation}.`;
+        searchQuery = conf.keywords;
         shouldSearch = true;
-      } else if (userMessage.includes("south")) {
-        replyPrefix = "For South walls, running horses or fire themes bring Success.";
-        searchQuery = "running horses fire abstract red";
-        shouldSearch = true;
-      } else if (userMessage.includes("west") || userMessage.includes("stability")) {
-        replyPrefix = "For South-West, mountains or birds symbolize Stability.";
-        searchQuery = "mountains birds landscape";
-        shouldSearch = true;
+
+        // Analytics Log
+        await prisma.vastuLog.create({
+          data: { direction, query: searchQuery }
+        });
       } else {
         // Ask for direction
         responseData = {
