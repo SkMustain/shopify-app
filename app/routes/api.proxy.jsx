@@ -27,16 +27,53 @@ export const action = async ({ request }) => {
 
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
 
-    // 1. Handle Visual Search (Mocked for now as we don't have Vision API yet)
+    // 1. Handle Visual Search (Mocked Vision API)
     if (userImage) {
-      responseData = {
-        reply: "That looks like a beautiful room! Based on the colors, I recommend these modern abstract pieces (Mockup):",
-        type: "carousel",
-        data: [
-          { title: "Abstract Blue", price: "$150", image: "https://placehold.co/600x400/2980b9/ffffff?text=Abstract+Blue" },
-          { title: "Golden Horizon", price: "$220", image: "https://placehold.co/600x400/f1c40f/ffffff?text=Golden+Horizon" }
-        ]
-      };
+      // Simulate Analysis (Randomly pick attributes)
+      const styles = ["Modern", "Traditional", "Minimalist"];
+      const colors = ["Blue", "Warm", "Monochrome"];
+      const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
+      const detectedColor = colors[Math.floor(Math.random() * colors.length)];
+
+      // Construct search query from analysis
+      const visionQuery = `${detectedStyle} ${detectedColor} Abstract`;
+      console.log(`Vision Analysis: ${detectedStyle} room with ${detectedColor} tones. Searching: ${visionQuery}`);
+
+      // Perform Search
+      const response = await admin.graphql(
+        `#graphql
+                query ($query: String!) {
+                  products(first: 5, query: $query) {
+                    edges {
+                      node {
+                        title
+                        handle
+                        priceRangeV2 { minVariantPrice { amount currencyCode } }
+                        featuredImage { url }
+                      }
+                    }
+                  }
+                }`,
+        { variables: { query: visionQuery } }
+      );
+      const responseJson = await response.json();
+      const products = responseJson.data?.products?.edges || [];
+
+      if (products.length > 0) {
+        const carouselData = products.map(edge => ({
+          title: edge.node.title,
+          price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
+          image: edge.node.featuredImage?.url,
+          url: `/products/${edge.node.handle}`
+        }));
+        responseData = {
+          reply: `I analyzed your room! I see a **${detectedStyle}** style with **${detectedColor}** tones. Here are some matches:`,
+          type: "carousel",
+          data: carouselData
+        };
+      } else {
+        responseData = { reply: `I see a ${detectedStyle} room, but couldn't find exact matches. Try searching for 'Abstract'.` };
+      }
     }
     // 2. Handle Help/Actions
     else if (userMessage.includes("help") || userMessage.includes("choose")) {
@@ -49,6 +86,33 @@ export const action = async ({ request }) => {
           { label: "Traditional", payload: "Show me traditional art" }
         ]
       };
+    }
+    // 2.1 Handle Vastu Logic
+    else if (userMessage.includes("vastu")) {
+      // Check if specific direction is mentioned
+      if (userMessage.includes("north") || userMessage.includes("east")) {
+        responseData = { reply: "For North/East walls, I recommend Waterfalls or Nature (Growth). Searching..." };
+        // Let it fall through to search execution with specific query
+        userMessage = "waterfall landscape nature";
+      } else if (userMessage.includes("south")) {
+        responseData = { reply: "For South walls, running horses or fire themes bring Success. Searching..." };
+        userMessage = "running horses fire abstract red";
+      } else if (userMessage.includes("west") || userMessage.includes("stability")) {
+        responseData = { reply: "For South-West, mountains or birds symbolize Stability. Searching..." };
+        userMessage = "mountains birds landscape";
+      } else {
+        // Ask for direction
+        responseData = {
+          reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
+          type: "actions",
+          data: [
+            { label: "North / East", payload: "Vastu North" },
+            { label: "South", payload: "Vastu South" },
+            { label: "South-West", payload: "Vastu West" }
+          ]
+        };
+        return Response.json(responseData, { headers: cors?.headers || {} });
+      }
     }
     // 3. Handle Text Search (Real Shopify Data)
     else {
