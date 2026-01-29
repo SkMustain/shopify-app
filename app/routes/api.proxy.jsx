@@ -52,133 +52,155 @@ export const action = async ({ request }) => {
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
       if (apiKeySetting && apiKeySetting.value) {
-        try {
-          const { GoogleGenerativeAI } = await import("@google/generative-ai");
-          const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        if (apiKeySetting && apiKeySetting.value) {
+          try {
+            const { GoogleGenerativeAI } = await import("@google/generative-ai");
+            const genAI = new GoogleGenerativeAI(apiKeySetting.value);
 
-          // Prepare image (Base64 removal)
-          const base64Data = userImage.split(',')[1];
-          const imagePart = {
-            inlineData: { data: base64Data, mimeType: "image/jpeg" },
-          };
+            // Helper to try models in sequence
+            const generateWithFallback = async (prompt, imagePart) => {
+              const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash-001", "gemini-1.5-flash", "gemini-1.0-pro-vision-latest"];
+              let lastError;
 
-          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Do not use markdown.";
+              for (const modelName of modelsToTry) {
+                try {
+                  console.log(`Attempting Gemini Model: ${modelName}`);
+                  const model = genAI.getGenerativeModel({ model: modelName });
+                  const result = await model.generateContent([prompt, imagePart]);
+                  return { result, modelName };
+                } catch (e) {
+                  console.error(`Model ${modelName} failed:`, e.message);
+                  lastError = e;
+                  // If it's not a 404 (model not found), it might be another issue, but we continue trying fallbacks
+                }
+              }
+              throw lastError;
+            };
 
-          const result = await model.generateContent([prompt, imagePart]);
-          const text = result.response.text();
-          const cleanText = text.replace(/```json|```/g, '').trim();
-          const json = JSON.parse(cleanText);
+            // Prepare image (Base64 removal)
+            const base64Data = userImage.split(',')[1];
+            const imagePart = {
+              inlineData: { data: base64Data, mimeType: "image/jpeg" },
+            };
 
-          searchQuery = json.searchQuery || "Abstract Art";
-          replyPrefix = `I analyzed your room using Gemini Vision! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
-          analysisResult = `Real Analysis: ${json.style} / ${json.colors}`;
-          shouldSearch = true;
+            const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Do not use markdown.";
 
-        } catch (e) {
-          console.error("Gemini Error:", e);
-          searchQuery = "Modern Art";
-          // DEBUG: Expose the error to the user for now
-          replyPrefix = `I had trouble using the AI Vision. Error: ${e.message || e.toString()}. Here are some modern picks instead:`;
-          analysisResult = "Error: " + e.message;
+            const { result, modelName } = await generateWithFallback(prompt, imagePart);
+
+            const text = result.response.text();
+            const text = result.response.text();
+            const cleanText = text.replace(/```json|```/g, '').trim();
+            const json = JSON.parse(cleanText);
+
+            searchQuery = json.searchQuery || "Abstract Art";
+            replyPrefix = `I analyzed your room using Gemini Vision (${modelName})! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
+            analysisResult = `Real Analysis: ${json.style} / ${json.colors}`;
+            shouldSearch = true;
+
+          } catch (e) {
+            console.error("Gemini Error:", e);
+            searchQuery = "Modern Art";
+            // DEBUG: Expose the error to the user for now
+            replyPrefix = `I had trouble using the AI Vision. Error: ${e.message || e.toString()}. Here are some modern picks instead:`;
+            analysisResult = "Error: " + e.message;
+            shouldSearch = true;
+          }
+        } else {
+          // FALLBACK MOCK
+          const styles = ["Abstract", "Landscape", "Nature", "Modern"];
+          const colors = ["Blue", "Gold", "Red", "Green"];
+          const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
+          const detectedColor = colors[Math.floor(Math.random() * colors.length)];
+
+          searchQuery = `${detectedStyle} Art`;
+          replyPrefix = `I analyzed the composition (Mock). The room has **${detectedStyle}** elements with **${detectedColor}** undertones.`;
+          analysisResult = `Mock Analysis: ${detectedStyle}`;
           shouldSearch = true;
         }
-      } else {
-        // FALLBACK MOCK
-        const styles = ["Abstract", "Landscape", "Nature", "Modern"];
-        const colors = ["Blue", "Gold", "Red", "Green"];
-        const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
-        const detectedColor = colors[Math.floor(Math.random() * colors.length)];
 
-        searchQuery = `${detectedStyle} Art`;
-        replyPrefix = `I analyzed the composition (Mock). The room has **${detectedStyle}** elements with **${detectedColor}** undertones.`;
-        analysisResult = `Mock Analysis: ${detectedStyle}`;
-        shouldSearch = true;
+        await prisma.customerImage.create({
+          data: {
+            imageData: userImage.substring(0, 100) + "...",
+            analysisResult: analysisResult
+          }
+        });
       }
 
-      await prisma.customerImage.create({
-        data: {
-          imageData: userImage.substring(0, 100) + "...",
-          analysisResult: analysisResult
-        }
-      });
-    }
-
-    // 2. HELP / ACTIONS
-    else if (userMessage.includes("help") || userMessage.includes("choose")) {
-      responseData = {
-        reply: "I can guide you. What kind of vibe are you looking for?",
-        type: "actions",
-        data: [
-          { label: "Peaceful & Calm", payload: "Show me peaceful art" },
-          { label: "Energetic & Bold", payload: "Show me bold abstract art" },
-          { label: "Traditional", payload: "Show me traditional art" }
-        ]
-      };
-      // Return immediately for simple actions
-      return Response.json(responseData, { headers: cors?.headers || {} });
-    }
-
-    // 3. VASTU LOGIC
-    else if (userMessage.includes("vastu")) {
-      let direction = "";
-      if (userMessage.includes("north") || userMessage.includes("east")) direction = "North";
-      else if (userMessage.includes("south")) direction = "South";
-      else if (userMessage.includes("west") || userMessage.includes("stability")) direction = "West";
-
-      if (direction) {
-        const conf = getConfig(direction);
-        replyPrefix = `For ${direction} walls, I recommend ${conf.recommendation}.`;
-        searchQuery = conf.keywords;
-        shouldSearch = true;
-
-        // Analytics Log
-        await prisma.vastuLog.create({
-          data: { direction, query: searchQuery }
-        });
-      } else {
-        // Ask for direction
+      // 2. HELP / ACTIONS
+      else if (userMessage.includes("help") || userMessage.includes("choose")) {
         responseData = {
-          reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
+          reply: "I can guide you. What kind of vibe are you looking for?",
           type: "actions",
           data: [
-            { label: "North / East", payload: "Vastu North" },
-            { label: "South", payload: "Vastu South" },
-            { label: "South-West", payload: "Vastu West" }
+            { label: "Peaceful & Calm", payload: "Show me peaceful art" },
+            { label: "Energetic & Bold", payload: "Show me bold abstract art" },
+            { label: "Traditional", payload: "Show me traditional art" }
           ]
         };
+        // Return immediately for simple actions
         return Response.json(responseData, { headers: cors?.headers || {} });
       }
-    }
 
-    // 4. STANDARD TEXT SEARCH (If not handled above)
-    else {
-      searchQuery = userMessage;
-      shouldSearch = true;
-    }
+      // 3. VASTU LOGIC
+      else if (userMessage.includes("vastu")) {
+        let direction = "";
+        if (userMessage.includes("north") || userMessage.includes("east")) direction = "North";
+        else if (userMessage.includes("south")) direction = "South";
+        else if (userMessage.includes("west") || userMessage.includes("stability")) direction = "West";
 
-    // --- SEARCH EXECUTION ---
-    if (shouldSearch) {
-      // Clean Query if it wasn't set by Vastu/Vision (i.e. if it came from raw user input)
-      if (!userImage && !userMessage.includes("vastu")) {
-        const stopWords = [
-          "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
-          "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
-          "advice", "room", "wall", "decor"
-        ];
-        if (searchQuery.split(" ").length > 1) {
-          searchQuery = searchQuery.split(" ")
-            .filter(word => !stopWords.includes(word.toLowerCase()))
-            .join(" ")
-            .trim();
+        if (direction) {
+          const conf = getConfig(direction);
+          replyPrefix = `For ${direction} walls, I recommend ${conf.recommendation}.`;
+          searchQuery = conf.keywords;
+          shouldSearch = true;
+
+          // Analytics Log
+          await prisma.vastuLog.create({
+            data: { direction, query: searchQuery }
+          });
+        } else {
+          // Ask for direction
+          responseData = {
+            reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
+            type: "actions",
+            data: [
+              { label: "North / East", payload: "Vastu North" },
+              { label: "South", payload: "Vastu South" },
+              { label: "South-West", payload: "Vastu West" }
+            ]
+          };
+          return Response.json(responseData, { headers: cors?.headers || {} });
         }
-        if (searchQuery.length < 2) searchQuery = "art";
       }
 
-      console.log("Executing Search for:", searchQuery);
+      // 4. STANDARD TEXT SEARCH (If not handled above)
+      else {
+        searchQuery = userMessage;
+        shouldSearch = true;
+      }
 
-      const response = await admin.graphql(
-        `#graphql
+      // --- SEARCH EXECUTION ---
+      if (shouldSearch) {
+        // Clean Query if it wasn't set by Vastu/Vision (i.e. if it came from raw user input)
+        if (!userImage && !userMessage.includes("vastu")) {
+          const stopWords = [
+            "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
+            "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
+            "advice", "room", "wall", "decor"
+          ];
+          if (searchQuery.split(" ").length > 1) {
+            searchQuery = searchQuery.split(" ")
+              .filter(word => !stopWords.includes(word.toLowerCase()))
+              .join(" ")
+              .trim();
+          }
+          if (searchQuery.length < 2) searchQuery = "art";
+        }
+
+        console.log("Executing Search for:", searchQuery);
+
+        const response = await admin.graphql(
+          `#graphql
         query ($query: String!) {
           products(first: 5, query: $query) {
             edges {
@@ -192,20 +214,20 @@ export const action = async ({ request }) => {
             }
           }
         }`,
-        { variables: { query: searchQuery } }
-      );
+          { variables: { query: searchQuery } }
+        );
 
-      const responseJson = await response.json();
-      let products = responseJson.data?.products?.edges || [];
+        const responseJson = await response.json();
+        let products = responseJson.data?.products?.edges || [];
 
-      // Default intro if not set by logic above
-      if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
+        // Default intro if not set by logic above
+        if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
 
-      // ZERO RESULT FALLBACK
-      if (products.length === 0) {
-        console.log("No exact matches. Fetching fallback products.");
-        const fallbackResponse = await admin.graphql(
-          `#graphql
+        // ZERO RESULT FALLBACK
+        if (products.length === 0) {
+          console.log("No exact matches. Fetching fallback products.");
+          const fallbackResponse = await admin.graphql(
+            `#graphql
           query {
             products(first: 5, sortKey: CREATED_AT, reverse: true) {
               edges {
@@ -219,39 +241,39 @@ export const action = async ({ request }) => {
               }
             }
           }`
-        );
-        const fallbackJson = await fallbackResponse.json();
-        products = fallbackJson.data?.products?.edges || [];
-        replyPrefix = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+          );
+          const fallbackJson = await fallbackResponse.json();
+          products = fallbackJson.data?.products?.edges || [];
+          replyPrefix = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+        }
+
+        if (products.length > 0) {
+          const carouselData = products.map(edge => ({
+            title: edge.node.title,
+            price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
+            image: edge.node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+            url: `/products/${edge.node.handle}`
+          }));
+
+          responseData = {
+            reply: replyPrefix, // Use the dynamic prefix
+            type: "carousel",
+            data: carouselData
+          };
+        } else {
+          responseData = {
+            reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
+          };
+        }
       }
 
-      if (products.length > 0) {
-        const carouselData = products.map(edge => ({
-          title: edge.node.title,
-          price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
-          image: edge.node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-          url: `/products/${edge.node.handle}`
-        }));
+      return Response.json(responseData, { headers: cors?.headers || {} });
 
-        responseData = {
-          reply: replyPrefix, // Use the dynamic prefix
-          type: "carousel",
-          data: carouselData
-        };
-      } else {
-        responseData = {
-          reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
-        };
-      }
+    } catch (error) {
+      console.error("Proxy Error:", error);
+      // CRITICAL: Return 200 so Shopify displays this JSON instead of the 500 HTML page
+      return Response.json({
+        reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
+      }, { status: 200 });
     }
-
-    return Response.json(responseData, { headers: cors?.headers || {} });
-
-  } catch (error) {
-    console.error("Proxy Error:", error);
-    // CRITICAL: Return 200 so Shopify displays this JSON instead of the 500 HTML page
-    return Response.json({
-      reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
-    }, { status: 200 });
-  }
-};
+  };
