@@ -58,7 +58,7 @@ export const action = async ({ request }) => {
 
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
-            const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash-001", "gemini-1.5-flash", "gemini-1.0-pro-vision-latest"];
+            const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"];
             let lastError;
 
             for (const modelName of modelsToTry) {
