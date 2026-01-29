@@ -78,7 +78,8 @@ export const action = async ({ request }) => {
         } catch (e) {
           console.error("Gemini Error:", e);
           searchQuery = "Modern Art";
-          replyPrefix = "I had trouble seeing the image clearly, but here are some modern picks:";
+          // DEBUG: Expose the error to the user for now
+          replyPrefix = `I had trouble using the AI Vision. Error: ${e.message || e.toString()}. Here are some modern picks instead:`;
           analysisResult = "Error: " + e.message;
           shouldSearch = true;
         }
