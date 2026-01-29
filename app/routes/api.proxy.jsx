@@ -50,16 +50,21 @@ export const action = async ({ request }) => {
       await prisma.customerImage.create({
         data: {
           imageData: userImage.substring(0, 100) + "...", // Truncate for log
-          analysisResult: "Mock Analysis: Modern / Blue"
+          analysisResult: "Mock Analysis: Modern / Abstract"
         }
       });
 
-      const styles = ["Modern", "Traditional", "Minimalist"];
-      const colors = ["Blue", "Warm", "Monochrome"];
+      // KEY CHANGE: Use broader terms that are more likely to match product titles/tags
+      const styles = ["Abstract", "Landscape", "Nature", "Modern"];
+      const colors = ["Blue", "Gold", "Red", "Green"];
+
       const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
       const detectedColor = colors[Math.floor(Math.random() * colors.length)];
 
-      searchQuery = `${detectedStyle} ${detectedColor} Abstract`;
+      // Construct a broader query (e.g., "Abstract Art" or "Blue Painting") vs specific 3-term string
+      searchQuery = `${detectedStyle} Art`;
+      // Option: You could try `${detectedStyle} ${detectedColor}` if your catalog is rich enough.
+
       replyPrefix = `I analyzed your room! I see a **${detectedStyle}** style with **${detectedColor}** tones.`;
       shouldSearch = true;
     }
