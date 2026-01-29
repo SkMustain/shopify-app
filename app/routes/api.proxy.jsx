@@ -96,7 +96,40 @@ export const action = async ({ request }) => {
             );
 
             const responseJson = await response.json();
-            const products = responseJson.data?.products?.edges || [];
+            let products = responseJson.data?.products?.edges || [];
+            let replyMessage = `Found ${products.length} products for "${searchQuery}":`;
+
+            // ZERO RESULT FALLBACK
+            if (products.length === 0) {
+                console.log("No exact matches. Fetching fallback products.");
+                const fallbackResponse = await admin.graphql(
+                    `#graphql
+                    query {
+                      products(first: 5, sortKey: BEST_SELLING) {
+                        edges {
+                          node {
+                            id
+                            title
+                            handle
+                            description(truncateAt: 60)
+                            priceRangeV2 {
+                              minVariantPrice {
+                                amount
+                                currencyCode
+                              }
+                            }
+                            featuredImage {
+                              url
+                            }
+                          }
+                        }
+                      }
+                    }`
+                );
+                const fallbackJson = await fallbackResponse.json();
+                products = fallbackJson.data?.products?.edges || [];
+                replyMessage = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+            }
 
             if (products.length > 0) {
                 const carouselData = products.map(edge => {
@@ -111,13 +144,13 @@ export const action = async ({ request }) => {
                 });
 
                 responseData = {
-                    reply: `Found ${products.length} products for "${searchQuery}":`,
+                    reply: replyMessage,
                     type: "carousel",
                     data: carouselData
                 };
             } else {
                 responseData = {
-                    reply: `I couldn't find any products matching "${searchQuery}". Try "abstract", "nature", or "blue".`
+                    reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
                 };
             }
         }
