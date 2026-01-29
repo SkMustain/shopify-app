@@ -58,8 +58,9 @@ export const action = async ({ request }) => {
 
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
-            const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"];
-            let lastError;
+            // Try specific versions first, then aliases
+            const modelsToTry = ["gemini-1.5-flash-001", "gemini-1.5-flash", "gemini-1.5-pro-001", "gemini-pro-vision"];
+            let errorLog = [];
 
             for (const modelName of modelsToTry) {
               try {
@@ -69,10 +70,10 @@ export const action = async ({ request }) => {
                 return { result, modelName };
               } catch (e) {
                 console.error(`Model ${modelName} failed:`, e.message);
-                lastError = e;
+                errorLog.push(`${modelName}: ${e.message}`);
               }
             }
-            throw lastError;
+            throw new Error(errorLog.join(" | "));
           };
 
           // Prepare image (Base64 removal)
