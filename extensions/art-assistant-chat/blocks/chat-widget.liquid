@@ -436,14 +436,17 @@
     }
 
     .art-assistant-input-area {
-        padding: 8px;
-        gap: 4px; /* Even tighter gap */
+        padding: 6px; /* Reduced from 8px */
+        gap: 4px;
+        flex-wrap: nowrap; /* Force single line */
     }
 
     .art-assistant-input-area input {
-        font-size: 13px;
-        padding: 8px 10px;
+        font-size: 12px; /* Smaller font */
+        padding: 6px 8px; /* Tighter padding */
         min-width: 0;
+        width: 0; /* Critical: Force flex basis to 0 */
+        flex: 1;
     }
 
     /* Smaller Upload Button */
