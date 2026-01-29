@@ -26,56 +26,23 @@ export const action = async ({ request }) => {
     const userImage = payload.image;
 
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
+    let shouldSearch = false; // Flag to determine if we run the GQL query
+    let searchQuery = "";
+    let replyPrefix = ""; // To prepend to the carousel intro
 
-    // 1. Handle Visual Search (Mocked Vision API)
+    // 1. VISUAL SEARCH (Mocked)
     if (userImage) {
-      // Simulate Analysis (Randomly pick attributes)
       const styles = ["Modern", "Traditional", "Minimalist"];
       const colors = ["Blue", "Warm", "Monochrome"];
       const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
       const detectedColor = colors[Math.floor(Math.random() * colors.length)];
 
-      // Construct search query from analysis
-      const visionQuery = `${detectedStyle} ${detectedColor} Abstract`;
-      console.log(`Vision Analysis: ${detectedStyle} room with ${detectedColor} tones. Searching: ${visionQuery}`);
-
-      // Perform Search
-      const response = await admin.graphql(
-        `#graphql
-                query ($query: String!) {
-                  products(first: 5, query: $query) {
-                    edges {
-                      node {
-                        title
-                        handle
-                        priceRangeV2 { minVariantPrice { amount currencyCode } }
-                        featuredImage { url }
-                      }
-                    }
-                  }
-                }`,
-        { variables: { query: visionQuery } }
-      );
-      const responseJson = await response.json();
-      const products = responseJson.data?.products?.edges || [];
-
-      if (products.length > 0) {
-        const carouselData = products.map(edge => ({
-          title: edge.node.title,
-          price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
-          image: edge.node.featuredImage?.url,
-          url: `/products/${edge.node.handle}`
-        }));
-        responseData = {
-          reply: `I analyzed your room! I see a **${detectedStyle}** style with **${detectedColor}** tones. Here are some matches:`,
-          type: "carousel",
-          data: carouselData
-        };
-      } else {
-        responseData = { reply: `I see a ${detectedStyle} room, but couldn't find exact matches. Try searching for 'Abstract'.` };
-      }
+      searchQuery = `${detectedStyle} ${detectedColor} Abstract`;
+      replyPrefix = `I analyzed your room! I see a **${detectedStyle}** style with **${detectedColor}** tones.`;
+      shouldSearch = true;
     }
-    // 2. Handle Help/Actions
+
+    // 2. HELP / ACTIONS
     else if (userMessage.includes("help") || userMessage.includes("choose")) {
       responseData = {
         reply: "I can guide you. What kind of vibe are you looking for?",
@@ -86,20 +53,24 @@ export const action = async ({ request }) => {
           { label: "Traditional", payload: "Show me traditional art" }
         ]
       };
+      // Return immediately for simple actions
+      return Response.json(responseData, { headers: cors?.headers || {} });
     }
-    // 2.1 Handle Vastu Logic
+
+    // 3. VASTU LOGIC
     else if (userMessage.includes("vastu")) {
-      // Check if specific direction is mentioned
       if (userMessage.includes("north") || userMessage.includes("east")) {
-        responseData = { reply: "For North/East walls, I recommend Waterfalls or Nature (Growth). Searching..." };
-        // Let it fall through to search execution with specific query
-        userMessage = "waterfall landscape nature";
+        replyPrefix = "For North/East walls, I recommend Waterfalls or Nature (Growth).";
+        searchQuery = "waterfall landscape nature";
+        shouldSearch = true;
       } else if (userMessage.includes("south")) {
-        responseData = { reply: "For South walls, running horses or fire themes bring Success. Searching..." };
-        userMessage = "running horses fire abstract red";
+        replyPrefix = "For South walls, running horses or fire themes bring Success.";
+        searchQuery = "running horses fire abstract red";
+        shouldSearch = true;
       } else if (userMessage.includes("west") || userMessage.includes("stability")) {
-        responseData = { reply: "For South-West, mountains or birds symbolize Stability. Searching..." };
-        userMessage = "mountains birds landscape";
+        replyPrefix = "For South-West, mountains or birds symbolize Stability.";
+        searchQuery = "mountains birds landscape";
+        shouldSearch = true;
       } else {
         // Ask for direction
         responseData = {
@@ -114,106 +85,91 @@ export const action = async ({ request }) => {
         return Response.json(responseData, { headers: cors?.headers || {} });
       }
     }
-    // 3. Handle Text Search (Real Shopify Data)
-    else {
-      // Clean up the search query
-      // Clean up the search query
-      let searchQuery = userMessage;
-      const stopWords = [
-        "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
-        "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
-        "advice", "room", "wall", "decor"
-      ];
 
-      // If the query is long (not just a keyword like "vastu"), try to extract keywords
-      if (userMessage.split(" ").length > 1) {
-        searchQuery = userMessage.split(" ")
-          .filter(word => !stopWords.includes(word.toLowerCase()))
-          .join(" ")
-          .trim();
+    // 4. STANDARD TEXT SEARCH (If not handled above)
+    else {
+      searchQuery = userMessage;
+      shouldSearch = true;
+    }
+
+    // --- SEARCH EXECUTION ---
+    if (shouldSearch) {
+      // Clean Query if it wasn't set by Vastu/Vision (i.e. if it came from raw user input)
+      if (!userImage && !userMessage.includes("vastu")) {
+        const stopWords = [
+          "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
+          "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
+          "advice", "room", "wall", "decor"
+        ];
+        if (searchQuery.split(" ").length > 1) {
+          searchQuery = searchQuery.split(" ")
+            .filter(word => !stopWords.includes(word.toLowerCase()))
+            .join(" ")
+            .trim();
+        }
+        if (searchQuery.length < 2) searchQuery = "art";
       }
 
-      // Fallback if cleaning removed everything
-      if (searchQuery.length < 2) searchQuery = "art";
-
-      console.log("Searching Shopify for:", searchQuery);
+      console.log("Executing Search for:", searchQuery);
 
       const response = await admin.graphql(
         `#graphql
-                query ($query: String!) {
-                  products(first: 5, query: $query) {
-                    edges {
-                      node {
-                        id
-                        title
-                        handle
-                        description(truncateAt: 60)
-                        priceRangeV2 {
-                          minVariantPrice {
-                            amount
-                            currencyCode
-                          }
-                        }
-                        featuredImage {
-                          url
-                        }
-                      }
-                    }
-                  }
-                }`,
+        query ($query: String!) {
+          products(first: 5, query: $query) {
+            edges {
+              node {
+                title
+                handle
+                description(truncateAt: 60)
+                priceRangeV2 { minVariantPrice { amount currencyCode } }
+                featuredImage { url }
+              }
+            }
+          }
+        }`,
         { variables: { query: searchQuery } }
       );
 
       const responseJson = await response.json();
       let products = responseJson.data?.products?.edges || [];
-      let replyMessage = `Found ${products.length} products for "${searchQuery}":`;
+
+      // Default intro if not set by logic above
+      if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
 
       // ZERO RESULT FALLBACK
       if (products.length === 0) {
         console.log("No exact matches. Fetching fallback products.");
         const fallbackResponse = await admin.graphql(
           `#graphql
-                    query {
-                      products(first: 5, sortKey: CREATED_AT, reverse: true) {
-                        edges {
-                          node {
-                            id
-                            title
-                            handle
-                            description(truncateAt: 60)
-                            priceRangeV2 {
-                              minVariantPrice {
-                                amount
-                                currencyCode
-                              }
-                            }
-                            featuredImage {
-                              url
-                            }
-                          }
-                        }
-                      }
-                    }`
+          query {
+            products(first: 5, sortKey: CREATED_AT, reverse: true) {
+              edges {
+                node {
+                  title
+                  handle
+                  description(truncateAt: 60)
+                  priceRangeV2 { minVariantPrice { amount currencyCode } }
+                  featuredImage { url }
+                }
+              }
+            }
+          }`
         );
         const fallbackJson = await fallbackResponse.json();
         products = fallbackJson.data?.products?.edges || [];
-        replyMessage = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+        replyPrefix = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
       }
 
       if (products.length > 0) {
-        const carouselData = products.map(edge => {
-          const p = edge.node;
-          return {
-            title: p.title,
-            price: `${p.priceRangeV2.minVariantPrice.amount} ${p.priceRangeV2.minVariantPrice.currencyCode}`,
-            image: p.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-            // Construct URL: Store domain is usually available in session or we can use relative path if on proxy
-            url: `/products/${p.handle}`
-          };
-        });
+        const carouselData = products.map(edge => ({
+          title: edge.node.title,
+          price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
+          image: edge.node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+          url: `/products/${edge.node.handle}`
+        }));
 
         responseData = {
-          reply: replyMessage,
+          reply: replyPrefix, // Use the dynamic prefix
           type: "carousel",
           data: carouselData
         };
