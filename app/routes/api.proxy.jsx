@@ -121,8 +121,10 @@ export const action = async ({ request }) => {
         }
       });
 
-      // 2. HELP / ACTIONS
-      else if (userMessage.includes("help") || userMessage.includes("choose")) {
+    }
+
+    // 2. HELP / ACTIONS
+    else if (userMessage.includes("help") || userMessage.includes("choose")) {
       responseData = {
         reply: "I can guide you. What kind of vibe are you looking for?",
         type: "actions",
