@@ -1,24 +1,24 @@
 <div class="art-assistant-chat-wrapper">
   <!-- Chat Button -->
-  <button id="art-assistant-chat-btn" class="chat-btn">
+  <button id="art-assistant-chat-btn" class="art-assistant-chat-btn">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
     <span>Art AI</span>
   </button>
 
   <!-- Chat Window -->
-  <div id="art-assistant-chat-window" class="chat-window hidden">
-    <div class="chat-header">
+  <div id="art-assistant-chat-window" class="art-assistant-chat-window hidden">
+    <div class="art-assistant-chat-header">
       <h3>Art Assistant</h3>
-      <button id="art-assistant-close-btn" class="close-btn">&times;</button>
+      <button id="art-assistant-close-btn" class="art-assistant-close-btn">&times;</button>
     </div>
-    <div id="art-assistant-messages" class="chat-messages">
-      <div class="message bot">
+    <div id="art-assistant-messages" class="art-assistant-messages">
+      <div class="art-assistant-message bot">
         Hello! I can help you find the perfect art. What are you looking for?
       </div>
     </div>
-    <div class="chat-input-area">
+    <div class="art-assistant-chat-input-area">
       <input type="file" id="art-assistant-file-input" accept="image/*" style="display: none;" />
-      <button id="art-assistant-upload-btn" class="icon-btn">
+      <button id="art-assistant-upload-btn" class="art-assistant-icon-btn">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
       </button>
       <input type="text" id="art-assistant-input" placeholder="Type a message..." />

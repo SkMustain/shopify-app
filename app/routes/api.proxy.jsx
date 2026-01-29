@@ -1,76 +1,76 @@
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-    // App Proxy requests receive a signature that must be validated
-    // authenticate.public.appProxy handles this validation automatically
-    const { session, cors } = await authenticate.public.appProxy(request);
+  // App Proxy requests receive a signature that must be validated
+  // authenticate.public.appProxy handles this validation automatically
+  const { session, cors } = await authenticate.public.appProxy(request);
 
-    if (!session) {
-        return new Response("Unauthorized", { status: 401 });
-    }
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
-    return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors?.headers || {} });
+  return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors?.headers || {} });
 };
 
 export const action = async ({ request }) => {
-    try {
-        const { session, admin, cors } = await authenticate.public.appProxy(request);
+  try {
+    const { session, admin, cors } = await authenticate.public.appProxy(request);
 
-        if (!session) {
-            // Return 200 with error to bypass Shopify's 500 error page
-            return Response.json({ reply: "Error: Unauthorized (Session invalid)" }, { headers: cors?.headers || {} });
-        }
+    if (!session) {
+      // Return 200 with error to bypass Shopify's 500 error page
+      return Response.json({ reply: "Error: Unauthorized (Session invalid)" }, { headers: cors?.headers || {} });
+    }
 
-        const payload = await request.json();
-        const userMessage = (payload.message || "").toLowerCase();
-        const userImage = payload.image;
+    const payload = await request.json();
+    const userMessage = (payload.message || "").toLowerCase();
+    const userImage = payload.image;
 
-        let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
+    let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
 
-        // 1. Handle Visual Search (Mocked for now as we don't have Vision API yet)
-        if (userImage) {
-            responseData = {
-                reply: "That looks like a beautiful room! Based on the colors, I recommend these modern abstract pieces (Mockup):",
-                type: "carousel",
-                data: [
-                    { title: "Abstract Blue", price: "$150", image: "https://placehold.co/600x400/2980b9/ffffff?text=Abstract+Blue" },
-                    { title: "Golden Horizon", price: "$220", image: "https://placehold.co/600x400/f1c40f/ffffff?text=Golden+Horizon" }
-                ]
-            };
-        }
-        // 2. Handle Help/Actions
-        else if (userMessage.includes("help") || userMessage.includes("choose")) {
-            responseData = {
-                reply: "I can guide you. What kind of vibe are you looking for?",
-                type: "actions",
-                data: [
-                    { label: "Peaceful & Calm", payload: "Show me peaceful art" },
-                    { label: "Energetic & Bold", payload: "Show me bold abstract art" },
-                    { label: "Traditional", payload: "Show me traditional art" }
-                ]
-            };
-        }
-        // 3. Handle Text Search (Real Shopify Data)
-        else {
-            // Clean up the search query
-            let searchQuery = userMessage;
-            const stopWords = ["show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant", "guide", "help", "choose", "products"];
+    // 1. Handle Visual Search (Mocked for now as we don't have Vision API yet)
+    if (userImage) {
+      responseData = {
+        reply: "That looks like a beautiful room! Based on the colors, I recommend these modern abstract pieces (Mockup):",
+        type: "carousel",
+        data: [
+          { title: "Abstract Blue", price: "$150", image: "https://placehold.co/600x400/2980b9/ffffff?text=Abstract+Blue" },
+          { title: "Golden Horizon", price: "$220", image: "https://placehold.co/600x400/f1c40f/ffffff?text=Golden+Horizon" }
+        ]
+      };
+    }
+    // 2. Handle Help/Actions
+    else if (userMessage.includes("help") || userMessage.includes("choose")) {
+      responseData = {
+        reply: "I can guide you. What kind of vibe are you looking for?",
+        type: "actions",
+        data: [
+          { label: "Peaceful & Calm", payload: "Show me peaceful art" },
+          { label: "Energetic & Bold", payload: "Show me bold abstract art" },
+          { label: "Traditional", payload: "Show me traditional art" }
+        ]
+      };
+    }
+    // 3. Handle Text Search (Real Shopify Data)
+    else {
+      // Clean up the search query
+      let searchQuery = userMessage;
+      const stopWords = ["show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant", "guide", "help", "choose", "products"];
 
-            // If the query is long (not just a keyword like "vastu"), try to extract keywords
-            if (userMessage.split(" ").length > 2) {
-                searchQuery = userMessage.split(" ")
-                    .filter(word => !stopWords.includes(word.toLowerCase()))
-                    .join(" ")
-                    .trim();
-            }
+      // If the query is long (not just a keyword like "vastu"), try to extract keywords
+      if (userMessage.split(" ").length > 2) {
+        searchQuery = userMessage.split(" ")
+          .filter(word => !stopWords.includes(word.toLowerCase()))
+          .join(" ")
+          .trim();
+      }
 
-            // Fallback if cleaning removed everything
-            if (searchQuery.length < 2) searchQuery = "art";
+      // Fallback if cleaning removed everything
+      if (searchQuery.length < 2) searchQuery = "art";
 
-            console.log("Searching Shopify for:", searchQuery);
+      console.log("Searching Shopify for:", searchQuery);
 
-            const response = await admin.graphql(
-                `#graphql
+      const response = await admin.graphql(
+        `#graphql
                 query ($query: String!) {
                   products(first: 5, query: $query) {
                     edges {
@@ -92,20 +92,20 @@ export const action = async ({ request }) => {
                     }
                   }
                 }`,
-                { variables: { query: searchQuery } }
-            );
+        { variables: { query: searchQuery } }
+      );
 
-            const responseJson = await response.json();
-            let products = responseJson.data?.products?.edges || [];
-            let replyMessage = `Found ${products.length} products for "${searchQuery}":`;
+      const responseJson = await response.json();
+      let products = responseJson.data?.products?.edges || [];
+      let replyMessage = `Found ${products.length} products for "${searchQuery}":`;
 
-            // ZERO RESULT FALLBACK
-            if (products.length === 0) {
-                console.log("No exact matches. Fetching fallback products.");
-                const fallbackResponse = await admin.graphql(
-                    `#graphql
+      // ZERO RESULT FALLBACK
+      if (products.length === 0) {
+        console.log("No exact matches. Fetching fallback products.");
+        const fallbackResponse = await admin.graphql(
+          `#graphql
                     query {
-                      products(first: 5, sortKey: BEST_SELLING) {
+                      products(first: 5, sortKey: CREATED_AT, reverse: true) {
                         edges {
                           node {
                             id
@@ -125,43 +125,43 @@ export const action = async ({ request }) => {
                         }
                       }
                     }`
-                );
-                const fallbackJson = await fallbackResponse.json();
-                products = fallbackJson.data?.products?.edges || [];
-                replyMessage = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
-            }
+        );
+        const fallbackJson = await fallbackResponse.json();
+        products = fallbackJson.data?.products?.edges || [];
+        replyMessage = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+      }
 
-            if (products.length > 0) {
-                const carouselData = products.map(edge => {
-                    const p = edge.node;
-                    return {
-                        title: p.title,
-                        price: `${p.priceRangeV2.minVariantPrice.amount} ${p.priceRangeV2.minVariantPrice.currencyCode}`,
-                        image: p.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-                        // Construct URL: Store domain is usually available in session or we can use relative path if on proxy
-                        url: `/products/${p.handle}`
-                    };
-                });
+      if (products.length > 0) {
+        const carouselData = products.map(edge => {
+          const p = edge.node;
+          return {
+            title: p.title,
+            price: `${p.priceRangeV2.minVariantPrice.amount} ${p.priceRangeV2.minVariantPrice.currencyCode}`,
+            image: p.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+            // Construct URL: Store domain is usually available in session or we can use relative path if on proxy
+            url: `/products/${p.handle}`
+          };
+        });
 
-                responseData = {
-                    reply: replyMessage,
-                    type: "carousel",
-                    data: carouselData
-                };
-            } else {
-                responseData = {
-                    reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
-                };
-            }
-        }
-
-        return Response.json(responseData, { headers: cors?.headers || {} });
-
-    } catch (error) {
-        console.error("Proxy Error:", error);
-        // CRITICAL: Return 200 so Shopify displays this JSON instead of the 500 HTML page
-        return Response.json({
-            reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
-        }, { status: 200 });
+        responseData = {
+          reply: replyMessage,
+          type: "carousel",
+          data: carouselData
+        };
+      } else {
+        responseData = {
+          reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
+        };
+      }
     }
+
+    return Response.json(responseData, { headers: cors?.headers || {} });
+
+  } catch (error) {
+    console.error("Proxy Error:", error);
+    // CRITICAL: Return 200 so Shopify displays this JSON instead of the 500 HTML page
+    return Response.json({
+      reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
+    }, { status: 200 });
+  }
 };
