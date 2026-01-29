@@ -397,33 +397,68 @@
   }
 
   /* Mobile Responsive */
-  @media (max-width: 480px) {
+  /* Mobile & Tablet Responsive */
+  @media (max-width: 768px) {
     .art-assistant-chat-window {
-      width: 94%;
-      right: auto;
-      left: 3%; /* 3% margin on each side */
-      bottom: 20px; /* Closer to bottom */
-      height: 80vh; /* Taller */
-      max-height: 800px;
-      border-radius: 20px;
-      z-index: 2147483647; /* Ensure top */
+      width: 300px;
+      right: 10px;
+      left: auto;
+      bottom: 80px;
+      height: 70vh;
+      max-height: 600px;
+      border-radius: 12px;
+      z-index: 2147483647;
+    }
+
+    .art-assistant-chat-header {
+        padding: 12px 16px;
+    }
+    
+    .art-assistant-chat-header h3 {
+        font-size: 15px;
+    }
+
+    .art-assistant-message {
+        padding: 8px 12px;
+        font-size: 13px;
+        max-width: 85%;
+    }
+
+    .art-assistant-input-area {
+        padding: 8px;
+    }
+
+    .art-assistant-input-area input {
+        font-size: 13px;
+        padding: 8px 10px;
     }
     
     .art-assistant-toggle-btn {
-        bottom: 20px;
-        right: 20px;
+        bottom: 15px;
+        right: 15px;
+        width: 50px;
+        height: 50px;
         z-index: 2147483647;
     }
+    
+    .art-assistant-toggle-btn svg {
+        width: 28px;
+        height: 28px;
+    }
 
-    /* Wrap action buttons if they get too wide */
+    /* Compact Action Buttons */
     .art-assistant-action-row {
-        flex-wrap: wrap;
-        justify-content: center;
+        gap: 6px;
+        margin-top: 8px;
+        flex-wrap: wrap; /* Ensure visibility */
+        justify-content: flex-start;
     }
     
     .art-assistant-action-btn {
-        flex: 1 1 40%; /* Grow to fill space */
-        min-width: 120px;
+        padding: 6px 10px;
+        font-size: 11px;
+        min-width: auto; /* Allow shrinking */
+        flex: 0 0 auto;
     }
   }
 </style>
