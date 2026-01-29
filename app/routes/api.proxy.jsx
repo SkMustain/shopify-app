@@ -73,6 +73,21 @@ export const action = async ({ request }) => {
                 errorLog.push(`${modelName}: ${e.message}`);
               }
             }
+
+            // If all failed, try to list available models to debug
+            try {
+              const listResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKeySetting.value}`);
+              const listJson = await listResp.json();
+              if (listJson.models) {
+                const availableModels = listJson.models.map(m => m.name).join(", ");
+                errorLog.push(`AVAILABLE MODELS: ${availableModels}`);
+              } else {
+                errorLog.push(`LIST MODELS FAILED: ${JSON.stringify(listJson)}`);
+              }
+            } catch (listErr) {
+              errorLog.push(`LIST FETCH ERROR: ${listErr.message}`);
+            }
+
             throw new Error(errorLog.join(" | "));
           };
 
