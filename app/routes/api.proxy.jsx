@@ -1,4 +1,3 @@
-import { json } from "@react-router/node";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
@@ -10,7 +9,7 @@ export const loader = async ({ request }) => {
         return new Response("Unauthorized", { status: 401 });
     }
 
-    return json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors.headers });
+    return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors.headers });
 };
 
 export const action = async ({ request }) => {
@@ -35,7 +34,7 @@ export const action = async ({ request }) => {
         aiResponse = `That's a great choice! Based on "${userMessage}", I think you'd love some Abstract Expressionism.`;
     }
 
-    return json({
+    return Response.json({
         reply: aiResponse
     }, {
         headers: cors.headers
