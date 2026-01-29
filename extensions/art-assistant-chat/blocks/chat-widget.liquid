@@ -399,10 +399,31 @@
   /* Mobile Responsive */
   @media (max-width: 480px) {
     .art-assistant-chat-window {
-      width: calc(100% - 40px);
-      right: 20px;
-      bottom: 85px;
-      height: 70vh;
+      width: 94%;
+      right: auto;
+      left: 3%; /* 3% margin on each side */
+      bottom: 20px; /* Closer to bottom */
+      height: 80vh; /* Taller */
+      max-height: 800px;
+      border-radius: 20px;
+      z-index: 2147483647; /* Ensure top */
+    }
+    
+    .art-assistant-toggle-btn {
+        bottom: 20px;
+        right: 20px;
+        z-index: 2147483647;
+    }
+
+    /* Wrap action buttons if they get too wide */
+    .art-assistant-action-row {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .art-assistant-action-btn {
+        flex: 1 1 40%; /* Grow to fill space */
+        min-width: 120px;
     }
   }
 </style>
