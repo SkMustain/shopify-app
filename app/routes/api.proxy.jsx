@@ -41,7 +41,10 @@ export const action = async ({ request }) => {
 
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
     let shouldSearch = false; // Flag to determine if we run the GQL query
-    let searchQuery = "";
+
+    // Core Signals
+    let searchQueries = []; // Array of broad queries
+    let primarySearchTerm = ""; // The main concept (for error display)
     let replyPrefix = ""; // To prepend to the carousel intro
 
     // 1. VISUAL SEARCH
@@ -59,7 +62,7 @@ export const action = async ({ request }) => {
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
             // Updated to use the models explicitly listed by the user
-            const modelsToTry = ["gemini-2.0-flash", "gemini-2.0-flash-001", "gemini-flash-latest", "gemini-1.5-flash"];
+            const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
             let errorLog = [];
 
             for (const modelName of modelsToTry) {
@@ -82,7 +85,12 @@ export const action = async ({ request }) => {
             inlineData: { data: base64Data, mimeType: "image/jpeg" },
           };
 
-          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Transitional Bedroom Decor' or 'Modern Abstract Art'). Return ONLY the JSON string, no markdown formatting.";
+          const prompt = `Analyze this room's interior design style and color palette. 
+          Return a JSON object with keys: 
+          'style' (e.g. Modern, Boho), 
+          'colors' (e.g. Blue, Earthy), 
+          'searchQueries' (A JSON ARRAY of 3 distinct, broad Shopify search terms. Example: ["Boho Wall Art", "Beige Decor", "Macrame"]).
+          Return ONLY the JSON string, no markdown formatting.`;
 
           const { result, modelName } = await generateWithFallback(prompt, imagePart);
 
@@ -101,14 +109,24 @@ export const action = async ({ request }) => {
             throw new Error("Invalid JSON structure in response: " + text);
           }
 
-          searchQuery = json.searchQuery || "Abstract Art";
-          replyPrefix = `I analyzed your room using Gemini Vision (${modelName})! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
+          if (json.searchQueries && Array.isArray(json.searchQueries)) {
+            searchQueries = json.searchQueries;
+          } else if (json.searchQuery) { // Fallback for old prompt structure
+            searchQueries = [json.searchQuery];
+          } else {
+            searchQueries = ["Abstract Art"];
+          }
+
+          primarySearchTerm = json.style ? `${json.style} Style` : searchQueries[0];
+
+          replyPrefix = `I analyzed your room using Gemini Vision! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
           analysisResult = `Real Analysis: ${json.style} / ${json.colors}`;
           shouldSearch = true;
 
         } catch (e) {
           console.error("Gemini Error:", e);
-          searchQuery = "Modern Art";
+          searchQueries = ["Modern Art"];
+          primarySearchTerm = "Modern Art";
           replyPrefix = `I had trouble using the AI Vision. Error: ${e.message || e.toString()}. Here are some modern picks instead:`;
           analysisResult = "Error: " + e.message;
           shouldSearch = true;
@@ -120,7 +138,8 @@ export const action = async ({ request }) => {
         const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
         const detectedColor = colors[Math.floor(Math.random() * colors.length)];
 
-        searchQuery = `${detectedStyle} Art`;
+        searchQueries = [`${detectedStyle} Art`];
+        primarySearchTerm = `${detectedStyle} Art`;
         replyPrefix = `I analyzed the composition (Mock). The room has **${detectedStyle}** elements with **${detectedColor}** undertones.`;
         analysisResult = `Mock Analysis: ${detectedStyle}`;
         shouldSearch = true;
@@ -160,12 +179,14 @@ export const action = async ({ request }) => {
       if (direction) {
         const conf = getConfig(direction);
         replyPrefix = `For ${direction} walls, I recommend ${conf.recommendation}.`;
-        searchQuery = conf.keywords;
+        searchQueries = conf.keywords.split(' '); // simple split for vastu defaults
+        if (searchQueries.length === 0) searchQueries = [conf.keywords];
+        primarySearchTerm = `${direction} Vastu Art`;
         shouldSearch = true;
 
         // Analytics Log
         await prisma.vastuLog.create({
-          data: { direction, query: searchQuery }
+          data: { direction, query: conf.keywords } // log raw keywords
         });
       } else {
         // Ask for direction
@@ -184,16 +205,14 @@ export const action = async ({ request }) => {
 
     // 4. STANDARD TEXT SEARCH (If not handled above)
     else {
-      searchQuery = userMessage;
+      primarySearchTerm = userMessage; // Initially set to user message
       shouldSearch = true;
     }
 
     // --- SEARCH EXECUTION (AI RECOMMENDATION ENGINE) ---
     if (shouldSearch) {
-      console.log("Starting AI Recommendation Engine for:", searchQuery);
+      console.log("Starting AI Recommendation Engine. Primary Term:", primarySearchTerm);
 
-      // 1. BROAD RETRIEVAL
-      let searchQueries = [searchQuery]; // Default
       let useAiCuration = false;
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
       let genAI;
@@ -203,8 +222,8 @@ export const action = async ({ request }) => {
         genAI = new GoogleGenerativeAI(apiKeySetting.value);
         useAiCuration = true;
 
-        // Generate Broad Queries (if not already done by Vision)
-        if (!userImage) {
+        // Generate Broad Queries IF NOT ALREADY SET by Image/Vastu
+        if (searchQueries.length === 0) {
           try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const qPrompt = `User wants: "${userMessage}". Generate 3 distinct, broad Shopify search queries to find relevant products. Example: for "Boho Bedroom", return ["Boho Wall Art", "Beige Decor", "Macrame"]. Return ONLY a JSON array of strings.`;
@@ -214,14 +233,21 @@ export const action = async ({ request }) => {
             if (jsonMatch) {
               searchQueries = JSON.parse(jsonMatch[0]);
               console.log("Generated Broad Queries:", searchQueries);
+            } else {
+              searchQueries = [userMessage];
             }
           } catch (e) {
             console.error("Query Gen Error:", e);
-            // Fallback to simple split logic
-            searchQueries = [searchQuery, searchQuery.split(" ")[0] + " Art"];
+            searchQueries = [userMessage];
           }
         }
+      } else {
+        // No API Key, fallback to single query or user message
+        if (searchQueries.length === 0) searchQueries = [userMessage];
       }
+
+      // Ensure we have something
+      if (searchQueries.length === 0) searchQueries = ["Art"];
 
       // Execute Broad Searches in Parallel
       const fetchProducts = async (q) => {
@@ -247,6 +273,7 @@ export const action = async ({ request }) => {
         return json.data?.products?.edges || [];
       };
 
+      console.log("Fetching candidates for:", searchQueries);
       const results = await Promise.all(searchQueries.map(q => fetchProducts(q)));
 
       // Deduplicate Candidates by Handle
@@ -273,8 +300,14 @@ export const action = async ({ request }) => {
             desc: p.description
           }));
 
+          // If we have an image, the userMessage might be "i want paintings" which is useless.
+          // If image is present, prioritize the analysis Style/Colors in the prompt context.
+          const userContext = userImage
+            ? `Visual Style: ${primarySearchTerm}. User Note: ${userMessage}`
+            : userMessage || primarySearchTerm;
+
           const curationPrompt = `
-                User Request: "${userMessage || searchQuery}"
+                User Context: "${userContext}"
                 Task: Select the top 5 products from the list below that BEST fit the user's aesthetic usage. 
                 Strictly ignore irrelevant items (e.g. ignore 'Industrial' if user wants 'Boho').
                 
@@ -298,16 +331,12 @@ export const action = async ({ request }) => {
             finalProducts = selectedHandles
               .map(h => candidateMap.get(h))
               .filter(Boolean);
-
-            console.log(`AI Curated ${finalProducts.length} products.`);
           }
         } catch (e) {
           console.error("Curation Error:", e);
-          // Fallback: Just take top 5 from candidate list
           finalProducts = candidates.slice(0, 5);
         }
       } else {
-        // No AI or no candidates
         finalProducts = candidates.slice(0, 5);
       }
 
@@ -315,7 +344,7 @@ export const action = async ({ request }) => {
       if (finalProducts.length > 0) {
         // Use AI reason if available
         if (curationReason) replyPrefix = `I found these perfect matches for you! ${curationReason}`;
-        else if (!replyPrefix) replyPrefix = `Here are the top results for "${searchQuery}":`;
+        else if (!replyPrefix) replyPrefix = `Here are the top results for "${primarySearchTerm}":`;
 
         const carouselData = finalProducts.map(node => ({
           title: node.title,
@@ -330,8 +359,10 @@ export const action = async ({ request }) => {
           data: carouselData
         };
       } else {
+        // Display the Primary Term (e.g. "Boho Style") instead of raw user text if it was an image search
+        const displayTerm = userImage ? primarySearchTerm : (userMessage || primarySearchTerm);
         responseData = {
-          reply: `I couldn't find any products matching "${userMessage || searchQuery}" in your store.`
+          reply: `I couldn't find any products matching "${displayTerm}" in your store.`
         };
       }
     }
