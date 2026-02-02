@@ -45,6 +45,7 @@ export const action = async ({ request }) => {
     let designCritique = ""; // Expert analysis text
     let userContext = ""; // For curation prompt
     let analysisLog = ""; // For DB logging
+    let replyPrefix = ""; // To prepend to the carousel intro (RESTORED)
 
     // 1. VISUAL SEARCH (EXPERT MODE)
     if (userImage) {
