@@ -41,7 +41,7 @@
     right: 24px;
     z-index: 2147483647; /* Max z-index */
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    line-height: 1.5;
+    line-height: 1.6;
   }
   
   .art-assistant-chat-wrapper * {
@@ -54,21 +54,22 @@
     color: white;
     border: none;
     border-radius: 50px;
-    padding: 14px 24px;
+    padding: 16px 28px;
     cursor: pointer;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     font-weight: 600;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     font-size: 16px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.5px;
   }
   
   .art-assistant-chat-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
   }
 
   /* Chat Window - Glassmorphism & Mobile */
@@ -76,18 +77,19 @@
     position: absolute;
     bottom: 90px;
     right: 0;
-    width: 380px;
-    height: 600px;
-    max-height: 80vh; /* Responsive height */
-    background: rgba(255, 255, 255, 0.95); /* Slight transparency */
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-    border: 1px solid rgba(255, 255, 255, 0.5);
+    width: 480px; /* Increased from 380px for Desktop */
+    height: 700px;
+    max-height: 85vh; /* Responsive height */
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    box-shadow: 0 12px 50px rgba(0,0,0,0.15);
+    border: 1px solid rgba(255, 255, 255, 0.8);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
     opacity: 1;
     transform: translateY(0) scale(1);
     transform-origin: bottom right;
@@ -96,104 +98,126 @@
   .art-assistant-chat-window.hidden {
     display: none;
     opacity: 0;
-    transform: translateY(20px) scale(0.95);
+    transform: translateY(40px) scale(0.9);
     pointer-events: none;
   }
 
   /* Chat Header */
   .art-assistant-chat-header {
     background: {{ block.settings.color }};
-    background: linear-gradient(135deg, {{ block.settings.color }}, {{ block.settings.color | color_lighten: 10 }});
+    background: linear-gradient(135deg, {{ block.settings.color }}, {{ block.settings.color | color_lighten: 15 }});
     color: white;
-    padding: 18px 24px;
+    padding: 24px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
   }
 
   .art-assistant-chat-header h3 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     letter-spacing: -0.5px;
   }
 
   .art-assistant-close-btn {
-    background: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.25);
     border: none;
     color: white;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 20px;
-    transition: background 0.2s;
+    font-size: 22px;
+    transition: all 0.2s ease;
   }
   
   .art-assistant-close-btn:hover {
-     background: rgba(255,255,255,0.3);
+     background: rgba(255,255,255,0.4);
+     transform: rotate(90deg);
   }
 
   /* Messages Area */
   .art-assistant-messages {
     flex: 1;
-    padding: 20px;
+    padding: 24px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    background: transparent;
+    gap: 20px; /* Increased Spacing */
+    background: linear-gradient(to bottom, #fcfcfc, #fff 20%);
+    scroll-behavior: smooth;
   }
 
   .art-assistant-message {
     max-width: 85%;
-    padding: 14px 18px;
-    border-radius: 18px;
+    padding: 16px 22px;
+    border-radius: 20px;
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 1.6;
     word-wrap: break-word;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    animation: messageSlideIn 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  @keyframes messageSlideIn {
+      to { opacity: 1; transform: translateY(0); }
   }
 
   .art-assistant-message.bot {
     background: white;
     align-self: flex-start;
     border-bottom-left-radius: 4px;
-    color: #1a1a1a;
+    color: #2d3748;
+    border: 1px solid #f0f4f8;
   }
 
   .art-assistant-message.user {
     background: {{ block.settings.color }};
+    background: linear-gradient(135deg, {{ block.settings.color }}, {{ block.settings.color | color_lighten: 10 }});
     color: white;
     align-self: flex-end;
     border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+
+  /* Typing Dot Animation */
+  .art-assistant-message.typing::after {
+      content: ' .';
+      animation: dots 1s steps(5, end) infinite;
+  }
+  @keyframes dots {
+    0%, 20% { content: ' .'; }
+    40% { content: ' ..'; }
+    60%, 100% { content: ' ...'; }
   }
 
   /* Preview Area */
   .art-assistant-preview-area {
-    padding: 12px 16px;
-    background: #f9fafb;
-    border-top: 1px solid #eee;
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #edf2f7;
     display: flex;
     align-items: center;
-    gap: 12px;
-    animation: slideUp 0.2s ease-out;
+    gap: 16px;
+    animation: slideUp 0.3s ease-out;
   }
   
-  .art-assistant-preview-area.hidden {
-      display: none;
-  }
+  .art-assistant-preview-area.hidden { display: none; }
   
   .art-assistant-preview-area img {
-      height: 60px;
-      width: 60px;
+      height: 70px;
+      width: 70px;
       object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      border: 2px solid white;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
   }
   
   .art-assistant-clear-btn {
@@ -201,92 +225,101 @@
       border: 1px solid #cbd5e0;
       color: #718096;
       border-radius: 50%;
-      width: 24px;
-      height: 24px;
+      width: 28px;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 16px;
-      line-height: 1;
+      transition: all 0.2s;
+  }
+  
+  .art-assistant-clear-btn:hover {
+      background: #e2e8f0;
+      color: #e53e3e;
   }
   
   @keyframes slideUp {
-      from { transform: translateY(10px); opacity: 0; }
+      from { transform: translateY(20px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
   }
 
   /* Input Area */
   .art-assistant-chat-input-area {
-    padding: 16px;
-    border-top: 1px solid rgba(0,0,0,0.06);
+    padding: 20px;
+    border-top: 1px solid rgba(0,0,0,0.04);
     display: flex;
-    gap: 12px;
+    gap: 14px;
     align-items: center;
     background: white;
   }
 
   .art-assistant-icon-btn {
-    background: #f5f5f5;
+    background: #f7fafc;
     border: none;
     cursor: pointer;
-    width: 40px;
-    height: 40px;
+    width: 44px; /* Larger touch target */
+    height: 44px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    color: #4a5568;
   }
   
   .art-assistant-icon-btn:hover {
-    background: #e0e0e0;
+    background: #edf2f7;
+    transform: scale(1.05);
+    color: {{ block.settings.color }};
   }
   
   .art-assistant-icon-btn svg {
-    stroke: #444;
+    stroke: currentColor;
+    stroke-width: 2px;
   }
 
   #art-assistant-input {
     flex: 1;
-    padding: 12px 16px;
-    border: 1px solid transparent;
-    border-radius: 24px;
+    padding: 14px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
     outline: none;
-    font-size: 15px;
-    background: #f0f2f5;
-    color: #333;
+    font-size: 16px;
+    background: #fff;
+    color: #2d3748;
     transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
   
   #art-assistant-input:focus {
-    background: white;
     border-color: {{ block.settings.color }};
-    box-shadow: 0 0 0 2px rgba(0,0,0,0.05);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
   }
 
   #art-assistant-send-btn {
     background: {{ block.settings.color }};
     color: white;
     border: none;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.2s, opacity 0.2s;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     flex-shrink: 0;
+    box-shadow: 0 4px 12px {{ block.settings.color | color_modify: 'alpha', 0.3 }};
   }
   
   #art-assistant-send-btn:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px {{ block.settings.color | color_modify: 'alpha', 0.4 }};
   }
   
   #art-assistant-send-btn svg {
-      margin-left: -2px; /* Visual optical adjustment */
+      margin-left: -2px;
       margin-top: 1px;
   }
   
@@ -294,87 +327,100 @@
   .art-assistant-actions-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin: 8px 0;
+    gap: 10px;
+    margin: 12px 0 4px;
     justify-content: flex-start;
     width: 100%;
+    animation: fadeIn 0.4s ease forwards;
+    opacity: 0;
+  }
+  
+  @keyframes fadeIn {
+      to { opacity: 1; }
   }
   
   .art-assistant-action-btn {
     background: white;
-    border: 1px solid {{ block.settings.color | color_lighten: 20 }};
+    border: 1px solid #e2e8f0;
     color: {{ block.settings.color }};
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 14px;
     cursor: pointer;
     transition: all 0.2s;
     font-weight: 600;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
   
   .art-assistant-action-btn:hover {
     background: {{ block.settings.color }};
     color: white;
     border-color: {{ block.settings.color }};
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px {{ block.settings.color | color_modify: 'alpha', 0.2 }};
   }
   
   /* Carousel */
   .art-assistant-carousel-container {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     overflow-x: auto;
-    padding: 12px 4px 20px 4px;
-    width: 100%;
-    min-height: 320px; /* Increased to ensure button visibility */
-    height: auto;
-    scrollbar-width: thin;
+    padding: 16px 8px 24px 8px; /* Extra padding for shadows */
+    width: calc(100% + 40px); /* Break out of parent padding */
+    margin-left: -20px;
+    margin-right: -20px; 
+    scroll-padding: 20px;
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch; /* Smooth scroll on iOS */
+    animation: slideUp 0.4s 0.1s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
   }
   
   .art-assistant-product-card {
-    min-width: 180px;
-    width: 180px;
-    height: 100%; /* Stretch to fill container */
+    min-width: 220px; /* Wider Cards */
+    width: 220px;
     background: white;
-    border: 1px solid #edf2f7;
-    border-radius: 12px;
+    border: none;
+    border-radius: 16px;
     overflow: hidden;
     flex-shrink: 0;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08); /* Softer, deeper shadow */
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s;
-    text-decoration: none; /* Reset link style */
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-decoration: none;
     color: inherit;
     cursor: pointer;
+    margin-first: 20px;
   }
   
+  .art-assistant-product-card:first-child { margin-left: 20px; }
+  .art-assistant-product-card:last-child { margin-right: 20px; }
+
   .art-assistant-product-card:hover {
-      transform: translateY(-4px);
+      transform: translateY(-6px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.12);
   }
   
   .art-assistant-product-card img {
     width: 100%;
-    height: 140px;
+    height: 160px; /* Taller images */
     object-fit: cover;
-    border-bottom: 1px solid #edf2f7;
   }
   
   .art-assistant-p-details {
-    padding: 12px;
+    padding: 16px;
     text-align: left;
     display: flex;
     flex-direction: column;
     flex: 1;
     justify-content: space-between;
+    gap: 8px;
   }
   
   .art-assistant-p-details h4 {
-    margin: 0 0 4px;
-    font-size: 14px;
+    margin: 0;
+    font-size: 15px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -384,119 +430,75 @@
   
   .art-assistant-p-details .price {
     display: block;
-    font-size: 13px;
-    color: #4a5568;
-    margin-bottom: 12px;
+    font-size: 14px;
+    color: #718096;
     font-weight: 500;
   }
   
   .art-assistant-buy-btn {
     display: block;
     text-align: center;
-    text-decoration: none;
     background: #1a202c;
     color: white !important;
-    font-size: 13px;
-    padding: 8px;
-    border-radius: 8px;
+    font-size: 14px;
+    padding: 10px;
+    border-radius: 10px;
     font-weight: 600;
-    transition: background 0.2s;
+    transition: background 0.2s, transform 0.1s;
   }
   
   .art-assistant-buy-btn:hover {
     background: #000;
+    transform: scale(1.02);
   }
 
   /* Mobile Responsive */
-  /* Mobile & Tablet Responsive */
   @media (max-width: 768px) {
     .art-assistant-chat-window {
-      width: 300px;
-      right: 10px;
-      left: auto;
-      bottom: 80px;
-      height: 70vh;
-      max-height: 600px;
-      border-radius: 12px;
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 0;
       z-index: 2147483647;
     }
 
     .art-assistant-chat-header {
-        padding: 12px 16px;
+      padding: 16px 20px;
+      padding-top: max(16px, env(safe-area-inset-top)); /* iOS Safe Area */
     }
     
-    .art-assistant-chat-header h3 {
-        font-size: 15px;
+    .art-assistant-chat-wrapper {
+        bottom: 0; right: 0; /* Cover everything */
+    }
+    
+    /* Only show button if window hidden */
+    .art-assistant-chat-btn {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+    }
+    
+    .art-assistant-chat-wrapper:has(.art-assistant-chat-window:not(.hidden)) .art-assistant-chat-btn {
+        display: none;
     }
 
     .art-assistant-message {
-        padding: 8px 12px;
-        font-size: 13px;
-        max-width: 85%;
+        padding: 10px 16px;
+        font-size: 15px;
+        max-width: 88%;
     }
 
-    .art-assistant-input-area {
-        padding: 6px; /* Reduced from 8px */
-        gap: 4px;
-        flex-wrap: nowrap; /* Force single line */
-    }
-
-    .art-assistant-input-area input {
-        font-size: 12px; /* Smaller font */
-        padding: 6px 8px; /* Tighter padding */
-        min-width: 0;
-        width: 0; /* Critical: Force flex basis to 0 */
-        flex: 1;
-    }
-
-    /* Smaller Upload Button */
-    .art-assistant-icon-btn {
-        width: 28px;
-        height: 28px;
-        flex-shrink: 0;
-    }
-
-    /* Compact Send Button (Circle) */
-    #art-assistant-send-btn {
-        width: 28px;
-        height: 28px;
-        padding: 0;
-        flex-shrink: 0;
-        border-radius: 50%;
+    .art-assistant-product-card {
+        min-width: 180px;
+        width: 180px;
     }
     
-    #art-assistant-send-btn svg {
-        width: 14px;
-        height: 14px;
-        margin: 0; /* Reset margins */
-    }
-    
-    .art-assistant-toggle-btn {
-        bottom: 15px;
-        right: 15px;
-        width: 50px;
-        height: 50px;
-        z-index: 2147483647;
-    }
-    
-    .art-assistant-toggle-btn svg {
-        width: 28px;
-        height: 28px;
-    }
-
-    /* Compact Action Buttons */
-    .art-assistant-action-row {
-        gap: 6px;
-        margin-top: 8px;
-        flex-wrap: wrap; /* Ensure visibility */
-        justify-content: flex-start;
-    }
-    
-    .art-assistant-action-btn {
-        padding: 6px 10px;
-        font-size: 11px;
-        min-width: auto; /* Allow shrinking */
-        flex: 0 0 auto;
+    .art-assistant-carousel-container {
+        padding-bottom: 24px; /* Space for scroll */
     }
   }
 </style>
