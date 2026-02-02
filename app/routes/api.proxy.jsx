@@ -249,29 +249,10 @@ export const action = async ({ request }) => {
       // Default intro if not set by logic above
       if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
 
-      // 3. Fallback (Latest Products)
+      // 3. Fallback (Latest Products) - DISABLED per user request (prefer "No Results" over "Random")
       if (products.length === 0) {
-        // ... (Existing fallback logic)
-        console.log("No matches found. Fetching fallback products.");
-        const fallbackResponse = await admin.graphql(
-          `#graphql
-          query {
-            products(first: 5, sortKey: CREATED_AT, reverse: true) {
-              edges {
-                node {
-                  title
-                  handle
-                  description(truncateAt: 60)
-                  priceRangeV2 { minVariantPrice { amount currencyCode } }
-                  featuredImage { url }
-                }
-              }
-            }
-          }`
-        );
-        const fallbackJson = await fallbackResponse.json();
-        products = fallbackJson.data?.products?.edges || [];
-        replyPrefix = `I couldn't find exact matches for "${searchQuery}", but here are some popular pieces you might love:`;
+        replyPrefix = `I couldn't find any products matching "${searchQuery}" in your store.`;
+        // Do not fetch fallback products.
       }
 
       if (products.length > 0) {
