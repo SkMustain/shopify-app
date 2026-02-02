@@ -188,36 +188,53 @@ export const action = async ({ request }) => {
       shouldSearch = true;
     }
 
-    // --- SEARCH EXECUTION ---
+    // --- SEARCH EXECUTION (AI RECOMMENDATION ENGINE) ---
     if (shouldSearch) {
-      // Clean Query if it wasn't set by Vastu/Vision (i.e. if it came from raw user input)
-      if (!userImage && !userMessage.includes("vastu")) {
-        const stopWords = [
-          "show", "me", "find", "looking", "for", "some", "compliant",
-          "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
-          "advice", "room", "wall"
-        ];
-        if (searchQuery.split(" ").length > 1) {
-          searchQuery = searchQuery.split(" ")
-            .filter(word => !stopWords.includes(word.toLowerCase()))
-            .join(" ")
-            .trim();
+      console.log("Starting AI Recommendation Engine for:", searchQuery);
+
+      // 1. BROAD RETRIEVAL
+      let searchQueries = [searchQuery]; // Default
+      let useAiCuration = false;
+      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+      let genAI;
+
+      if (apiKeySetting && apiKeySetting.value) {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        genAI = new GoogleGenerativeAI(apiKeySetting.value);
+        useAiCuration = true;
+
+        // Generate Broad Queries (if not already done by Vision)
+        if (!userImage) {
+          try {
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const qPrompt = `User wants: "${userMessage}". Generate 3 distinct, broad Shopify search queries to find relevant products. Example: for "Boho Bedroom", return ["Boho Wall Art", "Beige Decor", "Macrame"]. Return ONLY a JSON array of strings.`;
+            const result = await model.generateContent(qPrompt);
+            const text = result.response.text();
+            const jsonMatch = text.match(/\[.*\]/s);
+            if (jsonMatch) {
+              searchQueries = JSON.parse(jsonMatch[0]);
+              console.log("Generated Broad Queries:", searchQueries);
+            }
+          } catch (e) {
+            console.error("Query Gen Error:", e);
+            // Fallback to simple split logic
+            searchQueries = [searchQuery, searchQuery.split(" ")[0] + " Art"];
+          }
         }
-        if (searchQuery.length < 2) searchQuery = "art";
       }
 
-      console.log("Executing Search for:", searchQuery);
-
-      const executeSearch = async (q) => {
+      // Execute Broad Searches in Parallel
+      const fetchProducts = async (q) => {
         const response = await admin.graphql(
           `#graphql
           query ($query: String!) {
-            products(first: 5, query: $query) {
+            products(first: 20, query: $query) {
               edges {
                 node {
+                  id
                   title
                   handle
-                  description(truncateAt: 60)
+                  description(truncateAt: 100)
                   priceRangeV2 { minVariantPrice { amount currencyCode } }
                   featuredImage { url }
                 }
@@ -230,37 +247,81 @@ export const action = async ({ request }) => {
         return json.data?.products?.edges || [];
       };
 
-      // 1. Exact Search
-      let products = await executeSearch(searchQuery);
+      const results = await Promise.all(searchQueries.map(q => fetchProducts(q)));
 
-      // 2. Broad Search (OR + Wildcard)
-      if (products.length === 0) {
-        const terms = searchQuery.split(" ").filter(t => t.length > 2);
-        if (terms.length > 1) {
-          const broadQuery = terms.map(t => `${t}*`).join(" OR ");
-          console.log("Exact match failed. Trying broad query:", broadQuery);
-          products = await executeSearch(broadQuery);
-          if (products.length > 0) {
-            replyPrefix = `I found some matches related to "${searchQuery}":`;
-          }
+      // Deduplicate Candidates by Handle
+      const candidateMap = new Map();
+      results.flat().forEach(edge => {
+        if (!candidateMap.has(edge.node.handle)) {
+          candidateMap.set(edge.node.handle, edge.node);
         }
+      });
+      let candidates = Array.from(candidateMap.values());
+      console.log(`Fetched ${candidates.length} unique candidates.`);
+
+      // 2. AI CURATION (Re-ranking)
+      let finalProducts = [];
+      let curationReason = "";
+
+      if (useAiCuration && candidates.length > 0) {
+        try {
+          // Limit to top 50 to fit context context
+          const pool = candidates.slice(0, 50).map(p => ({
+            handle: p.handle,
+            title: p.title,
+            price: p.priceRangeV2.minVariantPrice.amount,
+            desc: p.description
+          }));
+
+          const curationPrompt = `
+                User Request: "${userMessage || searchQuery}"
+                Task: Select the top 5 products from the list below that BEST fit the user's aesthetic usage. 
+                Strictly ignore irrelevant items (e.g. ignore 'Industrial' if user wants 'Boho').
+                
+                Candidates: ${JSON.stringify(pool)}
+
+                Return a JSON object: { "selectedHandles": ["handle1", "handle2"], "reason": "Single sentence explaining why these fit the vibe." }
+            `;
+
+          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const result = await model.generateContent(curationPrompt);
+          const text = result.response.text();
+
+          const start = text.indexOf('{');
+          const end = text.lastIndexOf('}');
+          if (start !== -1 && end !== -1) {
+            const json = JSON.parse(text.substring(start, end + 1));
+            const selectedHandles = json.selectedHandles || [];
+            curationReason = json.reason || "";
+
+            // Map back to full product objects
+            finalProducts = selectedHandles
+              .map(h => candidateMap.get(h))
+              .filter(Boolean);
+
+            console.log(`AI Curated ${finalProducts.length} products.`);
+          }
+        } catch (e) {
+          console.error("Curation Error:", e);
+          // Fallback: Just take top 5 from candidate list
+          finalProducts = candidates.slice(0, 5);
+        }
+      } else {
+        // No AI or no candidates
+        finalProducts = candidates.slice(0, 5);
       }
 
-      // Default intro if not set by logic above
-      if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
+      // Format for Frontend
+      if (finalProducts.length > 0) {
+        // Use AI reason if available
+        if (curationReason) replyPrefix = `I found these perfect matches for you! ${curationReason}`;
+        else if (!replyPrefix) replyPrefix = `Here are the top results for "${searchQuery}":`;
 
-      // 3. Fallback (Latest Products) - DISABLED per user request (prefer "No Results" over "Random")
-      if (products.length === 0) {
-        replyPrefix = `I couldn't find any products matching "${searchQuery}" in your store.`;
-        // Do not fetch fallback products.
-      }
-
-      if (products.length > 0) {
-        const carouselData = products.map(edge => ({
-          title: edge.node.title,
-          price: `${edge.node.priceRangeV2.minVariantPrice.amount} ${edge.node.priceRangeV2.minVariantPrice.currencyCode}`,
-          image: edge.node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-          url: `/products/${edge.node.handle}`
+        const carouselData = finalProducts.map(node => ({
+          title: node.title,
+          price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
+          image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+          url: `/products/${node.handle}`
         }));
 
         responseData = {
@@ -270,7 +331,7 @@ export const action = async ({ request }) => {
         };
       } else {
         responseData = {
-          reply: `I looked everywhere but couldn't find any products in your store. Try adding some products or searching for something else.`
+          reply: `I couldn't find any products matching "${userMessage || searchQuery}" in your store.`
         };
       }
     }
