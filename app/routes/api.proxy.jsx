@@ -34,23 +34,20 @@ export const action = async ({ request }) => {
       recommendation: dir === "North" || dir === "East" ? "Waterfalls or Nature (Growth)" :
         dir === "South" ? "running horses or fire themes (Success)" :
           "mountains or birds (Stability)",
-      keywords: dir === "North" || dir === "East" ? "waterfall landscape nature" :
-        dir === "South" ? "running horses fire abstract red" :
-          "mountains birds landscape"
+      keywords: dir === "waterfall landscape nature" // fallback keywords
     };
 
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
     let shouldSearch = false; // Flag to determine if we run the GQL query
 
-    // Core Signals
+    // Core Signals for Expert Analysis
     let searchQueries = []; // Array of broad queries
-    let primarySearchTerm = ""; // The main concept (for error display)
-    let replyPrefix = ""; // To prepend to the carousel intro
+    let designCritique = ""; // Expert analysis text
+    let userContext = ""; // For curation prompt
+    let analysisLog = ""; // For DB logging
 
-    // 1. VISUAL SEARCH
+    // 1. VISUAL SEARCH (EXPERT MODE)
     if (userImage) {
-      let analysisResult = "";
-
       // Try fetching API Key
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
@@ -61,13 +58,12 @@ export const action = async ({ request }) => {
 
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
-            // Updated to use the models explicitly listed by the user
             const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
             let errorLog = [];
 
             for (const modelName of modelsToTry) {
               try {
-                console.log(`Attempting Gemini Model: ${modelName}`);
+                console.log(`Attempting Gemini Model (Vision): ${modelName}`);
                 const model = genAI.getGenerativeModel({ model: modelName });
                 const result = await model.generateContent([prompt, imagePart]);
                 return { result, modelName };
@@ -79,83 +75,67 @@ export const action = async ({ request }) => {
             throw new Error(errorLog.join(" | "));
           };
 
-          // Prepare image (Base64 removal)
+          // Prepare image
           const base64Data = userImage.split(',')[1];
           const imagePart = {
             inlineData: { data: base64Data, mimeType: "image/jpeg" },
           };
 
-          const prompt = `Analyze this room's interior design style and color palette. 
+          const prompt = `Act as an Expert Interior Designer. Analyze this room's interior design style, color palette, and mood.
+          Identify what kind of wall art would elevate the space (e.g. adding warmth to a cold room, or a focal point).
+          
           Return a JSON object with keys: 
-          'style' (e.g. Modern, Boho), 
-          'colors' (e.g. Blue, Earthy), 
-          'searchQueries' (A JSON ARRAY of 3 distinct, broad Shopify search terms. Example: ["Boho Wall Art", "Beige Decor", "Macrame"]).
-          Return ONLY the JSON string, no markdown formatting.`;
+          'critique': "A 2-sentence expert critique identifying the style and what the room needs.",
+          'searchQueries': (A JSON ARRAY of 3 SIMPLE, HIGH-RECALL Shopify search terms. e.g. ["Abstract", "Beige Art", "Canvas"]. Do NOT use complex phrases like "Transitional decor". Keep it simple to find products.),
+          'style': "Short style name (e.g. Minimalist)"
+
+          Return ONLY the JSON string.`;
 
           const { result, modelName } = await generateWithFallback(prompt, imagePart);
-
           const text = result.response.text();
-          console.log("Raw Gemini Output:", text); // Debug log
+          console.log("Raw Gemini Output (Vision):", text);
 
-          // Robust JSON extraction: Find first { and last }
+          // JSON Extraction
           const start = text.indexOf('{');
           const end = text.lastIndexOf('}');
-
-          let json;
           if (start !== -1 && end !== -1) {
-            const jsonString = text.substring(start, end + 1);
-            json = JSON.parse(jsonString);
+            const json = JSON.parse(text.substring(start, end + 1));
+
+            designCritique = json.critique || "I analyzed your room's style.";
+            searchQueries = json.searchQueries || ["Art"];
+            analysisLog = `Style: ${json.style}. Critique: ${designCritique}`;
+
+            // Set context for the Curator later
+            userContext = `Visual Analysis: ${designCritique}. User's Message: ${userMessage}`;
+            shouldSearch = true;
           } else {
-            throw new Error("Invalid JSON structure in response: " + text);
+            throw new Error("Invalid JSON from Vision");
           }
-
-          if (json.searchQueries && Array.isArray(json.searchQueries)) {
-            searchQueries = json.searchQueries;
-          } else if (json.searchQuery) { // Fallback for old prompt structure
-            searchQueries = [json.searchQuery];
-          } else {
-            searchQueries = ["Abstract Art"];
-          }
-
-          primarySearchTerm = json.style ? `${json.style} Style` : searchQueries[0];
-
-          replyPrefix = `I analyzed your room using Gemini Vision! I see **${json.style}** style with **${json.colors}** tones. Matches:`;
-          analysisResult = `Real Analysis: ${json.style} / ${json.colors}`;
-          shouldSearch = true;
 
         } catch (e) {
-          console.error("Gemini Error:", e);
-          searchQueries = ["Modern Art"];
-          primarySearchTerm = "Modern Art";
-          replyPrefix = `I had trouble using the AI Vision. Error: ${e.message || e.toString()}. Here are some modern picks instead:`;
-          analysisResult = "Error: " + e.message;
+          console.error("Gemini Vision Error:", e);
+          searchQueries = ["Modern Art", "Abstract"];
+          designCritique = "I had trouble analyzing the image deeply, but I've picked some modern pieces for you.";
           shouldSearch = true;
         }
       } else {
-        // FALLBACK MOCK
-        const styles = ["Abstract", "Landscape", "Nature", "Modern"];
-        const colors = ["Blue", "Gold", "Red", "Green"];
-        const detectedStyle = styles[Math.floor(Math.random() * styles.length)];
-        const detectedColor = colors[Math.floor(Math.random() * colors.length)];
-
-        searchQueries = [`${detectedStyle} Art`];
-        primarySearchTerm = `${detectedStyle} Art`;
-        replyPrefix = `I analyzed the composition (Mock). The room has **${detectedStyle}** elements with **${detectedColor}** undertones.`;
-        analysisResult = `Mock Analysis: ${detectedStyle}`;
+        // MOCK FALLBACK
+        searchQueries = ["Abstract Art"];
+        designCritique = "(Mock) Your room has a lovely modern vibe. A bold abstract piece would look great here.";
         shouldSearch = true;
       }
 
       await prisma.customerImage.create({
         data: {
           imageData: userImage.substring(0, 100) + "...",
-          analysisResult: analysisResult
+          analysisResult: analysisLog || "Error/Mock"
         }
       });
-
     }
 
-    // 2. HELP / ACTIONS
+    // 2. TEXT SEARCH / VASTU / ACTIONS
     else if (userMessage.includes("help") || userMessage.includes("choose")) {
+      // ... (Simple actions logic remains the same)
       responseData = {
         reply: "I can guide you. What kind of vibe are you looking for?",
         type: "actions",
@@ -165,118 +145,105 @@ export const action = async ({ request }) => {
           { label: "Traditional", payload: "Show me traditional art" }
         ]
       };
-      // Return immediately for simple actions
       return Response.json(responseData, { headers: cors?.headers || {} });
     }
-
-    // 3. VASTU LOGIC
     else if (userMessage.includes("vastu")) {
+      // ... (Vastu logic remains similar but sets context)
       let direction = "";
       if (userMessage.includes("north") || userMessage.includes("east")) direction = "North";
       else if (userMessage.includes("south")) direction = "South";
-      else if (userMessage.includes("west") || userMessage.includes("stability")) direction = "West";
+      else if (userMessage.includes("west")) direction = "West";
 
       if (direction) {
         const conf = getConfig(direction);
-        replyPrefix = `For ${direction} walls, I recommend ${conf.recommendation}.`;
-        searchQueries = conf.keywords.split(' '); // simple split for vastu defaults
-        if (searchQueries.length === 0) searchQueries = [conf.keywords];
-        primarySearchTerm = `${direction} Vastu Art`;
+        designCritique = `For ${direction}-facing walls, Vastu recommends ${conf.recommendation || "specific colors"}.`;
+        searchQueries = (conf.keywords || "art").split(" ");
+        userContext = `User wants Vastu compliant art for ${direction} wall.`;
         shouldSearch = true;
-
-        // Analytics Log
-        await prisma.vastuLog.create({
-          data: { direction, query: conf.keywords } // log raw keywords
-        });
       } else {
-        // Ask for direction
-        responseData = {
+        // Ask direction
+        return Response.json({
           reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
           type: "actions",
-          data: [
-            { label: "North / East", payload: "Vastu North" },
-            { label: "South", payload: "Vastu South" },
-            { label: "South-West", payload: "Vastu West" }
-          ]
-        };
-        return Response.json(responseData, { headers: cors?.headers || {} });
+          data: [{ label: "North/East", payload: "Vastu North" }, { label: "South", payload: "Vastu South" }]
+        }, { headers: cors?.headers || {} });
       }
     }
-
-    // 4. STANDARD TEXT SEARCH (If not handled above)
     else {
-      primarySearchTerm = userMessage; // Initially set to user message
+      // Standard Text
+      userContext = userMessage;
       shouldSearch = true;
     }
 
-    // --- SEARCH EXECUTION (AI RECOMMENDATION ENGINE) ---
+    // --- EXPERT SEARCH EXECUTION ---
     if (shouldSearch) {
-      console.log("Starting AI Recommendation Engine. Primary Term:", primarySearchTerm);
 
-      let useAiCuration = false;
+      // 1. QUERY GENERATION (If not done by Vision)
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
       let genAI;
+      let useAiCuration = false;
 
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         genAI = new GoogleGenerativeAI(apiKeySetting.value);
         useAiCuration = true;
 
-        // Generate Broad Queries IF NOT ALREADY SET by Image/Vastu
         if (searchQueries.length === 0) {
           try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-            const qPrompt = `User wants: "${userMessage}". Generate 3 distinct, broad Shopify search queries to find relevant products. Example: for "Boho Bedroom", return ["Boho Wall Art", "Beige Decor", "Macrame"]. Return ONLY a JSON array of strings.`;
+            // Expert Prompt for Text
+            const qPrompt = `Act as an Interior Designer. User says: "${userMessage}". 
+                    1. Write a 1-sentence design interpretation (Critique).
+                    2. Generate 3 SIMPLE, BROAD Shopify search terms to find candidates (e.g. "Blue Art", "Canvas").
+                    Return JSON: { "critique": "...", "searchQueries": [...] }`;
+
             const result = await model.generateContent(qPrompt);
             const text = result.response.text();
-            const jsonMatch = text.match(/\[.*\]/s);
+            const jsonMatch = text.match(/\{.*\}/s); // loose match
             if (jsonMatch) {
-              searchQueries = JSON.parse(jsonMatch[0]);
-              console.log("Generated Broad Queries:", searchQueries);
+              const json = JSON.parse(jsonMatch[0]);
+              searchQueries = json.searchQueries || [userMessage];
+              designCritique = json.critique || "";
+              userContext = `User Request: ${userMessage}. Designer Note: ${designCritique}`;
             } else {
               searchQueries = [userMessage];
             }
           } catch (e) {
-            console.error("Query Gen Error:", e);
+            console.error("Text Query Gen Error:", e);
             searchQueries = [userMessage];
           }
         }
-      } else {
-        // No API Key, fallback to single query or user message
-        if (searchQueries.length === 0) searchQueries = [userMessage];
       }
 
-      // Ensure we have something
       if (searchQueries.length === 0) searchQueries = ["Art"];
+      console.log("Broad Search Queries:", searchQueries);
 
-      // Execute Broad Searches in Parallel
+      // 2. ROBUST POOLING
       const fetchProducts = async (q) => {
         const response = await admin.graphql(
           `#graphql
-          query ($query: String!) {
-            products(first: 20, query: $query) {
-              edges {
-                node {
-                  id
-                  title
-                  handle
-                  description(truncateAt: 100)
-                  priceRangeV2 { minVariantPrice { amount currencyCode } }
-                  featuredImage { url }
+              query ($query: String!) {
+                products(first: 20, query: $query) {
+                  edges {
+                    node {
+                      id
+                      title
+                      handle
+                      description(truncateAt: 100)
+                      priceRangeV2 { minVariantPrice { amount currencyCode } }
+                      featuredImage { url }
+                    }
+                  }
                 }
-              }
-            }
-          }`,
+              }`,
           { variables: { query: q } }
         );
         const json = await response.json();
         return json.data?.products?.edges || [];
       };
 
-      console.log("Fetching candidates for:", searchQueries);
       const results = await Promise.all(searchQueries.map(q => fetchProducts(q)));
 
-      // Deduplicate Candidates by Handle
       const candidateMap = new Map();
       results.flat().forEach(edge => {
         if (!candidateMap.has(edge.node.handle)) {
@@ -284,15 +251,26 @@ export const action = async ({ request }) => {
         }
       });
       let candidates = Array.from(candidateMap.values());
-      console.log(`Fetched ${candidates.length} unique candidates.`);
+      console.log(`Initial Candidates: ${candidates.length}`);
 
-      // 2. AI CURATION (Re-ranking)
+      // ZERO RESULT POLICY: Fallback to "Art" if pool is too small
+      if (candidates.length < 5) {
+        console.log("Pool too small. triggering Fallback 'Art' search.");
+        const fallback = await fetchProducts("Art"); // Broadest possible term
+        fallback.forEach(edge => {
+          if (!candidateMap.has(edge.node.handle)) {
+            candidateMap.set(edge.node.handle, edge.node);
+          }
+        });
+        candidates = Array.from(candidateMap.values());
+      }
+
+      // 3. EXPERT CURATION
       let finalProducts = [];
-      let curationReason = "";
+      let expertAdvice = "";
 
       if (useAiCuration && candidates.length > 0) {
         try {
-          // Limit to top 50 to fit context context
           const pool = candidates.slice(0, 50).map(p => ({
             handle: p.handle,
             title: p.title,
@@ -300,21 +278,17 @@ export const action = async ({ request }) => {
             desc: p.description
           }));
 
-          // If we have an image, the userMessage might be "i want paintings" which is useless.
-          // If image is present, prioritize the analysis Style/Colors in the prompt context.
-          const userContext = userImage
-            ? `Visual Style: ${primarySearchTerm}. User Note: ${userMessage}`
-            : userMessage || primarySearchTerm;
-
           const curationPrompt = `
-                User Context: "${userContext}"
-                Task: Select the top 5 products from the list below that BEST fit the user's aesthetic usage. 
-                Strictly ignore irrelevant items (e.g. ignore 'Industrial' if user wants 'Boho').
-                
-                Candidates: ${JSON.stringify(pool)}
+                    You are an Expert Interior Designer.
+                    Context: "${designCritique || userContext}"
+                    
+                    Task: Select the top 5 pieces from the list below that PERFECTLY elevate this space.
+                    Explain your choice to the user in a friendly, expert tone.
 
-                Return a JSON object: { "selectedHandles": ["handle1", "handle2"], "reason": "Single sentence explaining why these fit the vibe." }
-            `;
+                    Candidates: ${JSON.stringify(pool)}
+
+                    Return JSON: { "selectedHandles": ["..."], "expertAdvice": "I chose these because..." }
+                `;
 
           const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
           const result = await model.generateContent(curationPrompt);
@@ -325,9 +299,8 @@ export const action = async ({ request }) => {
           if (start !== -1 && end !== -1) {
             const json = JSON.parse(text.substring(start, end + 1));
             const selectedHandles = json.selectedHandles || [];
-            curationReason = json.reason || "";
+            expertAdvice = json.expertAdvice || "";
 
-            // Map back to full product objects
             finalProducts = selectedHandles
               .map(h => candidateMap.get(h))
               .filter(Boolean);
@@ -340,11 +313,21 @@ export const action = async ({ request }) => {
         finalProducts = candidates.slice(0, 5);
       }
 
-      // Format for Frontend
+      // 4. RESPONSE
       if (finalProducts.length > 0) {
-        // Use AI reason if available
-        if (curationReason) replyPrefix = `I found these perfect matches for you! ${curationReason}`;
-        else if (!replyPrefix) replyPrefix = `Here are the top results for "${primarySearchTerm}":`;
+        // Priority: Design Critique -> Expert Advice -> Default
+        let intro = "";
+        if (designCritique) {
+          intro += `${designCritique}\n\n`;
+        }
+        if (expertAdvice) {
+          intro += `**Designer's Pick:** ${expertAdvice}`;
+        } else {
+          intro += "Here are the best matches for your space.";
+        }
+
+        // Cleanup
+        replyPrefix = intro;
 
         const carouselData = finalProducts.map(node => ({
           title: node.title,
@@ -354,15 +337,14 @@ export const action = async ({ request }) => {
         }));
 
         responseData = {
-          reply: replyPrefix, // Use the dynamic prefix
+          reply: replyPrefix,
           type: "carousel",
           data: carouselData
         };
       } else {
-        // Display the Primary Term (e.g. "Boho Style") instead of raw user text if it was an image search
-        const displayTerm = userImage ? primarySearchTerm : (userMessage || primarySearchTerm);
+        // Truly empty store?
         responseData = {
-          reply: `I couldn't find any products matching "${displayTerm}" in your store.`
+          reply: "I looked through the entire collection, but it seems empty! Please add some products to Shopify."
         };
       }
     }
@@ -371,7 +353,6 @@ export const action = async ({ request }) => {
 
   } catch (error) {
     console.error("Proxy Error:", error);
-    // CRITICAL: Return 200 so Shopify displays this JSON instead of the 500 HTML page
     return Response.json({
       reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
     }, { status: 200 });
