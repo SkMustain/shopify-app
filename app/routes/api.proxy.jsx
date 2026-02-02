@@ -307,7 +307,7 @@ export const action = async ({ request }) => {
                   }
                 }
               }`,
-          { variables: { query: q } }
+          { variables: { query: `${q} status:active` } }
         );
         const json = await response.json();
         return json.data?.products?.edges || [];
