@@ -82,7 +82,7 @@ export const action = async ({ request }) => {
             inlineData: { data: base64Data, mimeType: "image/jpeg" },
           };
 
-          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Modern Art' or 'Boho Wall Decor'). Return ONLY the JSON string, no markdown formatting.";
+          const prompt = "Analyze this room's interior design style and color palette. Return a JSON object with keys: 'style' (e.g. Modern, Boho), 'colors' (e.g. Blue, Earthy), and 'searchQuery' (a 2-3 word Shopify search term like 'Transitional Bedroom Decor' or 'Modern Abstract Art'). Return ONLY the JSON string, no markdown formatting.";
 
           const { result, modelName } = await generateWithFallback(prompt, imagePart);
 
