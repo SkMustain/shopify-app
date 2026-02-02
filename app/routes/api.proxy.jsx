@@ -193,9 +193,9 @@ export const action = async ({ request }) => {
       // Clean Query if it wasn't set by Vastu/Vision (i.e. if it came from raw user input)
       if (!userImage && !userMessage.includes("vastu")) {
         const stopWords = [
-          "show", "me", "find", "looking", "for", "some", "art", "paintings", "compliant",
+          "show", "me", "find", "looking", "for", "some", "compliant",
           "guide", "help", "choose", "products", "i", "want", "my", "need", "like", "suggestion",
-          "advice", "room", "wall", "decor"
+          "advice", "room", "wall"
         ];
         if (searchQuery.split(" ").length > 1) {
           searchQuery = searchQuery.split(" ")
@@ -208,33 +208,51 @@ export const action = async ({ request }) => {
 
       console.log("Executing Search for:", searchQuery);
 
-      const response = await admin.graphql(
-        `#graphql
-        query ($query: String!) {
-          products(first: 5, query: $query) {
-            edges {
-              node {
-                title
-                handle
-                description(truncateAt: 60)
-                priceRangeV2 { minVariantPrice { amount currencyCode } }
-                featuredImage { url }
+      const executeSearch = async (q) => {
+        const response = await admin.graphql(
+          `#graphql
+          query ($query: String!) {
+            products(first: 5, query: $query) {
+              edges {
+                node {
+                  title
+                  handle
+                  description(truncateAt: 60)
+                  priceRangeV2 { minVariantPrice { amount currencyCode } }
+                  featuredImage { url }
+                }
               }
             }
-          }
-        }`,
-        { variables: { query: searchQuery } }
-      );
+          }`,
+          { variables: { query: q } }
+        );
+        const json = await response.json();
+        return json.data?.products?.edges || [];
+      };
 
-      const responseJson = await response.json();
-      let products = responseJson.data?.products?.edges || [];
+      // 1. Exact Search
+      let products = await executeSearch(searchQuery);
+
+      // 2. Broad Search (OR + Wildcard)
+      if (products.length === 0) {
+        const terms = searchQuery.split(" ").filter(t => t.length > 2);
+        if (terms.length > 1) {
+          const broadQuery = terms.map(t => `${t}*`).join(" OR ");
+          console.log("Exact match failed. Trying broad query:", broadQuery);
+          products = await executeSearch(broadQuery);
+          if (products.length > 0) {
+            replyPrefix = `I found some matches related to "${searchQuery}":`;
+          }
+        }
+      }
 
       // Default intro if not set by logic above
       if (!replyPrefix) replyPrefix = `Found ${products.length} products for "${searchQuery}":`;
 
-      // ZERO RESULT FALLBACK
+      // 3. Fallback (Latest Products)
       if (products.length === 0) {
-        console.log("No exact matches. Fetching fallback products.");
+        // ... (Existing fallback logic)
+        console.log("No matches found. Fetching fallback products.");
         const fallbackResponse = await admin.graphql(
           `#graphql
           query {
