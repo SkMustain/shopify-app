@@ -225,64 +225,75 @@ export const action = async ({ request }) => {
       }
     }
     else {
-      // Standard Text Handling with INTENT CLASSIFICATION
+      // Standard Text Handling with CENTRAL INTELLIGENCE
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
-      // 0. QUICK REGEX GUARD for Greetings (No API Latency)
-      // Matches "hi", "hello", "hey", "thanks", "thank you"
-      const SMALL_TALK_REGEX = /^(hi|hello|hey|helo|greetings|good morning|thanks|thank you|thx)/i;
-      if (SMALL_TALK_REGEX.test(userMessage.trim())) {
-        return Response.json({
-          reply: "Hello! polite 👋 I am your Art Assistant. Ask me about finding art, or tell me your room style!"
-        }, { headers: cors?.headers || {} });
-      }
+      let brainResult = { type: "search", query: userMessage }; // Default to basic search
 
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        // Use 1.5-flash for the classifier (faster, more reliable for simple tasks)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Use 2.0-flash for high-level reasoning
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         try {
-          const intentPrompt = `
-                User says: "${userMessage}"
-                Act as a Friendly Art Store Assistant.
+          // CENTRAL BRAIN PROMPT
+          const brainPrompt = `
+                User Input: "${userMessage}"
+                Role: Expert Art Curator & Sales Assistant.
                 
-                Task: Determine if this is "Small Talk" (Greetings, thanks, who are you) OR a "Search Request" (buying art, specific topics).
+                Task: Analyze the input and select ONE path.
                 
-                RESPONSE RULES:
-                1. If Small Talk: Return JSON { "is_small_talk": true, "reply": "Your friendly reply here." }
-                2. If Search Request: Return JSON { "is_small_talk": false }
+                PATH 1: "chat"
+                - Trigger: User says "Hi", "Bro", "Hay", "Thanks", "Who are you", or gibberish.
+                - Action: Write a friendly, conversational reply.
                 
-                Return ONLY clean JSON.
+                PATH 2: "refine"
+                - Trigger: User asks for art but is VAGUE (e.g. "I want art", "Office paintings", "Bedroom decor").
+                - Condition: Missing Style, Vibe, or Color.
+                - Action: Ask ONE specific follow-up question to narrow down their taste (e.g. "To match your office, are you looking for curious modern art or something classic?").
+                
+                PATH 3: "search"
+                - Trigger: User provides specific details (e.g. "Blue abstract", "Modern office art", "Vastu for North wall").
+                - Action: Extract a robust search query.
+
+                Return JSON ONLY:
+                {
+                   "type": "chat" | "refine" | "search",
+                   "reply": "string (for chat/refine)",
+                   "search_query": "string (for search)"
+                }
              `;
 
-          const result = await model.generateContent(intentPrompt);
+          const result = await model.generateContent(brainPrompt);
           const text = result.response.text();
-
-          // Robust JSON Clean (remove markdown code blocks)
           const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
           const jsonMatch = cleanedText.match(/\{.*\}/s);
 
           if (jsonMatch) {
-            const json = JSON.parse(jsonMatch[0]);
-            console.log("Intent Analysis:", json);
-
-            if (json.is_small_talk === true && json.reply) {
-              return Response.json({ reply: json.reply }, { headers: cors?.headers || {} });
-            }
+            brainResult = JSON.parse(jsonMatch[0]);
+            console.log("Brain Decision:", brainResult);
           }
         } catch (e) {
-          console.error("Intent Classifier Error:", e);
-          // Fallthrough to search if error
+          console.error("Central Brain Error:", e);
         }
       }
 
-      // If Not Small Talk, Proceed to Search
-      userContext = userMessage;
-      // Basic detection for format in text
-      if (userMessage.includes("poster") || userMessage.includes("print")) desiredFormat = "poster";
-      else if (userMessage.includes("painting") || userMessage.includes("canvas")) desiredFormat = "painting";
+      // ACT ON BRAIN DECISION
+      if (brainResult.type === "chat" || brainResult.type === "refine") {
+        return Response.json({ reply: brainResult.reply || "How can I help you find art?" }, { headers: cors?.headers || {} });
+      }
+
+      // If SEARCH, proceed with the optimized query
+      if (brainResult.type === "search" && brainResult.search_query) {
+        userContext = brainResult.search_query;
+        // Format detection (preserves explicit format info)
+        if (userContext.toLowerCase().includes("poster")) desiredFormat = "poster";
+        if (userContext.toLowerCase().includes("canvas")) desiredFormat = "painting";
+      } else {
+        userContext = userMessage; // Fallback
+      }
+
       shouldSearch = true;
     }
 
