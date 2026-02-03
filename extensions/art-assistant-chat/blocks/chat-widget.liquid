@@ -410,7 +410,7 @@
           const div = document.createElement('div');
           div.className = `art-message ${sender}`;
           if(isImg) {
-              div.innerHTML = `<img src="${content}" style="max-width:100%; border-radius:12px;">`;
+              div.innerHTML = `<img src="${content}" style="max-width:280px; max-height:300px; width:auto; border-radius:12px; display:block;">`;
           } else {
               div.innerHTML = content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
           }
