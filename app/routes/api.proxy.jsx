@@ -257,22 +257,25 @@ export const action = async ({ request }) => {
           try {
             const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-            // Expert Prompt with Format Awareness
-            const qPrompt = `Act as an Interior Designer. User input: "${effectiveQuery}". 
-                    1. Write a 1-sentence design interpretation (Critique/Advice).
-                    2. Generate 3 SIMPLE, BROAD Shopify search terms.
-                    CRITICAL: If user wants 'poster', include terms like 'Poster', 'Print'. If 'painting', include 'Canvas', 'Art'.
+            // Expert Prompt with Format Awareness AND Stronger Logic
+            const qPrompt = `Act as an Elite Art Curator. User input: "${effectiveQuery}". 
+                    1. Analyze the core emotion, subject, and style.
+                    2. Write a 1-sentence expert critique identifying exactly what fits.
+                    3. Generate 6 DISTINCT, HIGH-IMPACT Shopify search terms.
+                       - Mix styles (e.g. "Abstract"), subjects (e.g. "Landscape"), and moods (e.g. "Serene").
+                       - If user asks a complex question, break it down into widely searchable tags.
+                    4. CRITICAL: If format is 'painting', ensure 'Canvas' is a keyword. If 'poster', 'Print'.
                     
-                    Return JSON: { "critique": "...", "searchQueries": [...] }`;
+                    Return JSON: { "critique": "...", "searchQueries": ["Term1", "Term2", "Term3", "Term4", "Term5", "Term6"] }`;
 
             const result = await model.generateContent(qPrompt);
             const text = result.response.text();
-            const jsonMatch = text.match(/\{.*\}/s); // loose match
+            const jsonMatch = text.match(/\{.*\}/s);
             if (jsonMatch) {
               const json = JSON.parse(jsonMatch[0]);
               searchQueries = json.searchQueries || [];
               designCritique = json.critique || "";
-              userContext = `Request: ${effectiveQuery}. Designer Note: ${designCritique}`;
+              userContext = `Request: ${effectiveQuery}. Curator Note: ${designCritique}`;
             }
           } catch (e) {
             console.error("Text Query Gen Error:", e);
@@ -292,7 +295,7 @@ export const action = async ({ request }) => {
         const response = await admin.graphql(
           `#graphql
               query ($query: String!) {
-                products(first: 20, query: $query) {
+                products(first: 50, query: $query) {
                   edges {
                     node {
                       id
@@ -302,6 +305,7 @@ export const action = async ({ request }) => {
                       productType
                       vendor
                       tags
+                      variants(first: 1) { edges { node { id } } }
                       priceRangeV2 { minVariantPrice { amount currencyCode } }
                       featuredImage { url }
                     }
@@ -411,6 +415,7 @@ export const action = async ({ request }) => {
           price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
           image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
           url: `/products/${node.handle}`,
+          variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "", // Extract ID
           vendor: node.vendor || "Art Assistant"
         }));
 

@@ -336,6 +336,18 @@
 
   @keyframes msgFade { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
   @keyframes slideUp { from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);} }
+  
+  .art-pill-btn.secondary { background: white; color: #1a1a1a; border: 1px solid #e2e8f0; }
+  .art-pill-btn.primary { background: #1a1a1a; color: white; border: 1px solid #1a1a1a; cursor: pointer;}
+  
+  .art-mini-add-btn {
+      margin-top: 4px; width: 100%;
+      background: #1a1a1a; color: white;
+      border: none; border-radius: 6px;
+      padding: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s;
+  }
+  .art-mini-add-btn:hover { background: #333; }
 </style>
 
 <script>
@@ -478,9 +490,11 @@
              <div class="art-hero-img-wrapper"><img src="${p.image}"></div>
              <div class="art-hero-content">
                  <h4 class="art-hero-title">${p.title}</h4>
-                 <span class="art-hero-vendor">${p.vendor}</span>
                  <p class="art-hero-desc">Interactive artisan furniture decorating art card...</p>
-                 <div class="art-pill-btn">View in Room</div>
+                 <div class="actions-row">
+                    <div class="art-pill-btn secondary" onclick="window.open('${p.url}', '_blank')">View Details</div>
+                    <div class="art-pill-btn primary" onclick="addToCart('${p.variantId}', this)">Add to Cart</div>
+                 </div>
              </div>
           `;
           container.appendChild(a);
@@ -496,14 +510,43 @@
               div.href = p.url; div.target = "_blank";
               div.innerHTML = `
                   <img src="${p.image}">
+                  <img src="${p.image}">
                   <div class="art-sidebar-info">
                       <div class="art-sidebar-title">${p.title}</div>
-                      <div class="art-sidebar-vendor">${p.vendor}</div>
+                      <button class="art-mini-add-btn" onclick="event.preventDefault(); addToCart('${p.variantId}', this)">+ Add</button>
                   </div>
               `;
               sidebar.appendChild(div);
           });
       }
+      window.addToCart = async (id, btn) => {
+          if(!id) return;
+          const originalText = btn.innerText;
+          btn.innerText = '...';
+          
+          try {
+             await fetch('/cart/add.js', {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({ items: [{ id: id, quantity: 1 }] })
+             });
+             
+             // Open Drawer (Theme Dependant Try)
+             document.documentElement.dispatchEvent(new CustomEvent('cart:add'));
+             document.documentElement.dispatchEvent(new CustomEvent('cart:refresh', { bubbles: true }));
+             
+             // Specific fix for some Dawn/Refresh versions to toggle drawer
+             const cartIcon = document.querySelector('a[href="/cart"], #cart-icon-bubble');
+             if(cartIcon) cartIcon.click();
+             
+             btn.innerText = 'Added!';
+             setTimeout(() => btn.innerText = originalText, 2000);
+             
+          } catch(e) {
+             console.error(e);
+             btn.innerText = 'Error';
+          }
+      };
   });
 </script>
 
