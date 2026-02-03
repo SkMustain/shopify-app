@@ -1,612 +1,490 @@
-<div class="art-assistant-modal-backdrop hidden" id="art-assistant-backdrop">
-  <div id="art-assistant-chat-window" class="art-assistant-chat-window">
-    
-    <!-- Close Button (Absolute) -->
-    <button id="art-assistant-close-btn" class="art-assistant-close-btn">&times;</button>
 
-    <div class="art-assistant-layout">
-        
-        <!-- LEFT: CHAT PANE -->
-        <div class="art-assistant-left-pane">
-            <div class="art-assistant-header">
-                <h3>Art Assistant</h3>
-            </div>
+<div class="art-assistant-overlay hidden" id="art-assistant-overlay">
+    <div class="art-assistant-container">
+        <!-- Close Button -->
+        <button id="art-assistant-close-btn" class="art-assistant-close-btn">&times;</button>
+
+        <!-- LEFT PANEL: CHAT -->
+        <div class="art-assistant-panel art-chat-panel">
+            <header class="art-panel-header">
+                <h2>Art Assistant</h2>
+            </header>
             
-            <div id="art-assistant-messages" class="art-assistant-messages">
-                <div class="art-assistant-message bot">
+            <div id="art-assistant-messages" class="art-messages-container">
+                <div class="art-message bot">
                     I'd love to help you find the perfect piece! First, which room are you decorating?
                 </div>
-                <!-- Quick Actions rendered here dynamically upon start or via js -->
+                <!-- Dynamic Content -->
             </div>
 
-            <!-- Preview Area -->
-            <div id="art-assistant-preview-area" class="art-assistant-preview-area hidden">
-                <img id="art-assistant-preview-img" src="" alt="Preview" />
-                <button id="art-assistant-clear-preview" class="art-assistant-clear-btn">&times;</button>
-            </div>
+            <!-- Input Area -->
+            <div class="art-input-wrapper">
+                 <!-- Image Preview -->
+                <div id="art-assistant-preview-area" class="art-preview-area hidden">
+                    <img id="art-assistant-preview-img" src="" />
+                    <button id="art-assistant-clear-preview">&times;</button>
+                </div>
 
-            <div class="art-assistant-input-area">
-                 <input type="file" id="art-assistant-file-input" accept="image/*" style="display: none;" />
-                 <button id="art-assistant-upload-btn" class="art-assistant-icon-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                 </button>
-                 <input type="text" id="art-assistant-input" placeholder="Type a message..." />
-                 <button id="art-assistant-send-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                 </button>
+                <div class="art-input-bar">
+                    <button id="art-assistant-upload-btn" class="art-icon-btn">📷</button>
+                    <input type="file" id="art-assistant-file-input" hidden accept="image/*">
+                    <input type="text" id="art-assistant-input" placeholder="Type a message..." />
+                    <button id="art-assistant-send-btn" class="art-send-btn">➤</button>
+                </div>
             </div>
         </div>
 
-        <!-- RIGHT: CURATION SIDEBAR -->
-        <div class="art-assistant-right-pane">
-            <h3 class="art-assistant-sidebar-title">Curation Sidebar</h3>
-            <div id="art-assistant-sidebar-grid" class="art-assistant-sidebar-grid">
-                <!-- Empty State -->
-                <div class="art-assistant-empty-state">
-                    <span style="font-size: 24px;">🎨</span>
+        <!-- RIGHT PANEL: SIDEBAR -->
+        <div class="art-assistant-panel art-sidebar-panel">
+            <header class="art-panel-header">
+                <h3>Curation Sidebar</h3>
+            </header>
+            
+            <div id="art-sidebar-grid" class="art-sidebar-grid">
+                 <div class="art-empty-state">
                     <p>Recommendations will appear here.</p>
-                </div>
+                 </div>
             </div>
         </div>
     </div>
-  </div>
 </div>
 
-<!-- Floating Trigger Button -->
-<button id="art-assistant-chat-btn" class="art-assistant-chat-btn">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-    <span>Art AI</span>
+<!-- Trigger Button -->
+<button id="art-assistant-trigger" class="art-assistant-trigger">
+    <span>✨ Art AI</span>
 </button>
 
 <style>
-  /* --- LAYOUT & MODAL --- */
-  .art-assistant-modal-backdrop {
+  /* --- FONTS & VARS --- */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+      --art-glass-bg: rgba(255, 255, 255, 0.85); /* Milky Glass */
+      --art-glass-border: rgba(255, 255, 255, 0.6);
+      --art-shadow: 0 20px 50px rgba(0,0,0,0.15);
+      --art-radius: 24px;
+      --art-primary: #1a1a1a;
+      --art-accent: #2d3748;
+  }
+
+  /* --- OVERLAY & LAYOUT --- */
+  .art-assistant-overlay {
       position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.4);
-      backdrop-filter: blur(4px);
-      z-index: 2147483640;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.3); /* Dim backdrop */
+      backdrop-filter: blur(8px);
+      z-index: 2147483647;
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: fadeIn 0.3s ease;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease;
   }
   
-  .art-assistant-modal-backdrop.hidden {
-      display: none;
-      pointer-events: none;
+  .art-assistant-overlay:not(.hidden) {
+      opacity: 1; pointer-events: auto;
   }
 
-  .art-assistant-chat-window {
-      width: 90vw;
-      max-width: 1000px; /* Reference Image Width */
-      height: 80vh;
-      max-height: 700px;
-      background: rgba(255, 255, 255, 0.96);
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-      border: 1px solid rgba(255,255,255,0.8);
+  .art-assistant-container {
+      width: 94vw; /* Full Width Desktop */
+      height: 90vh; /* Full Height */
+      max-width: 1600px;
+      display: flex;
+      gap: 20px; /* The GAP between panels */
       position: relative;
+  }
+
+  /* --- PANELS --- */
+  .art-assistant-panel {
+      background: var(--art-glass-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--art-glass-border);
+      border-radius: var(--art-radius);
+      box-shadow: var(--art-shadow);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  /* Split Layout */
-  .art-assistant-layout {
-      display: flex;
-      width: 100%;
-      height: 100%;
-  }
-
-  .art-assistant-left-pane {
-      flex: 65%; /* Chat takes 65% */
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid rgba(0,0,0,0.06);
-      background: #fdfdfd;
-  }
-
-  .art-assistant-right-pane {
-      flex: 35%; /* Sidebar takes 35% */
-      background: #f4f6f8;
-      display: flex;
-      flex-direction: column;
-      padding: 0;
-  }
-
-  /* --- LEFT PANE STYLES --- */
-  .art-assistant-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid rgba(0,0,0,0.04);
+      transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   
-  .art-assistant-header h3 {
-      font-size: 20px;
-      font-weight: 700;
-      margin: 0;
-      color: #1a202c;
+  .art-assistant-overlay:not(.hidden) .art-assistant-panel {
+      transform: translateY(0);
+  }
+  .art-assistant-overlay.hidden .art-assistant-panel {
+      transform: translateY(40px);
   }
 
-  .art-assistant-messages {
+  .art-chat-panel {
+      flex: 2; /* 66% width */
+      position: relative;
+  }
+
+  .art-sidebar-panel {
+      flex: 1; /* 33% width */
+      min-width: 380px;
+      background: rgba(255, 255, 255, 0.6); /* Slightly more transparent */
+  }
+
+  /* --- HEADER --- */
+  .art-panel-header {
+      padding: 24px 32px;
+  }
+  .art-panel-header h2, .art-panel-header h3 {
+      margin: 0; font-family: 'Inter', sans-serif; color: #1a1a1a; letter-spacing: -0.5px;
+  }
+  .art-panel-header h2 { font-size: 28px; font-weight: 800; }
+  .art-panel-header h3 { font-size: 20px; font-weight: 700; }
+
+  /* --- MESSAGES --- */
+  .art-messages-container {
       flex: 1;
-      padding: 24px;
+      padding: 0 32px 32px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 24px; /* Airy spacing */
   }
 
-  .art-assistant-message {
+  .art-message {
       max-width: 80%;
-      padding: 14px 20px;
+      padding: 18px 24px;
       border-radius: 20px;
-      font-size: 15px;
-      line-height: 1.5;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-      animation: slideIn 0.3s ease;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px; 
+      line-height: 1.6;
+      animation: msgFade 0.4s ease forwards;
   }
 
-  .art-assistant-message.bot {
+  .art-message.bot {
       background: white;
-      border: 1px solid #e2e8f0;
-      color: #2d3748;
+      align-self: flex-start;
       border-bottom-left-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+      color: #2d3748;
   }
 
-  .art-assistant-message.user {
-      background: #1a202c; /* Classic Black/Dark */
+  .art-message.user {
+      background: var(--art-primary);
       color: white;
       align-self: flex-end;
       border-bottom-right-radius: 4px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.1);
   }
-  
-  /* Input Area */
-  .art-assistant-input-area {
-      padding: 20px;
+
+  /* --- HERO CARD (In Chat) --- */
+  .art-hero-card {
       background: white;
-      border-top: 1px solid #eee;
+      border-radius: 24px;
+      padding: 20px;
       display: flex;
-      gap: 12px;
+      gap: 24px;
       align-items: center;
-  }
-  
-  #art-assistant-input {
-      flex: 1;
-      border: 1px solid #e2e8f0;
-      border-radius: 30px;
-      padding: 12px 20px;
-      font-size: 15px;
-      outline: none;
-      transition: all 0.2s;
-  }
-  
-  #art-assistant-input:focus {
-      border-color: #a0aec0;
-      box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
-  }
-
-  /* --- RIGHT PANE STYLES (CURATION SIDEBAR) --- */
-  .art-assistant-sidebar-title {
-      padding: 20px 24px;
-      margin: 0;
-      font-size: 16px;
-      font-weight: 600;
-      color: #4a5568;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
-      background: #f4f6f8;
-  }
-  
-  .art-assistant-sidebar-grid {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); /* Responsive Grid */
-      gap: 16px;
-      align-content: start;
-  }
-
-  /* Product Card (Sidebar Version) */
-  .art-assistant-sidebar-card {
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.04);
-      transition: transform 0.2s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      max-width: 90%;
+      align-self: flex-start;
+      animation: slideUp 0.5s ease;
       cursor: pointer;
       text-decoration: none;
       color: inherit;
-      display: flex;
-      flex-direction: column;
+      transition: transform 0.2s;
+  }
+  .art-hero-card:hover { transform: translateY(-4px); }
+
+  .art-hero-img-wrapper {
+      width: 160px; height: 160px; flex-shrink: 0;
+      border-radius: 16px; overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .art-hero-img-wrapper img {
+      width: 100%; height: 100%; object-fit: cover;
+  }
+
+  .art-hero-content {
+      flex: 1; display: flex; flex-direction: column; gap: 8px;
+  }
+  .art-hero-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .art-hero-vendor { font-size: 14px; color: #718096; font-weight: 500; }
+  .art-hero-desc { font-size: 14px; color: #4a5568; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  
+  .art-pill-btn {
+      margin-top: 12px; align-self: flex-start;
+      background: var(--art-primary); color: white;
+      padding: 10px 20px; border-radius: 100px;
+      font-size: 14px; font-weight: 600;
+  }
+
+  /* --- SIDEBAR GRID --- */
+  .art-sidebar-grid {
+      padding: 0 24px 24px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
   }
   
-  .art-assistant-sidebar-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.08);
-  }
-
-  .art-assistant-sidebar-card img {
-      width: 100%;
-      height: 120px;
-      object-fit: cover;
-      background: #eee;
-  }
-
-  .art-assistant-card-info {
-      padding: 10px;
-  }
-
-  .art-assistant-card-title {
-      font-size: 13px;
-      font-weight: 700;
-      margin: 0 0 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: #1a202c;
-  }
-
-  .art-assistant-card-vendor {
-      font-size: 11px;
-      color: #718096;
-      display: block;
-      margin-bottom: 6px;
-  }
-  
-  .art-assistant-card-price {
-      font-size: 12px;
-      font-weight: 600;
-      color: #2d3748;
-  }
-
-  /* Empty State */
-  .art-assistant-empty-state {
-      grid-column: 1 / -1;
-      text-align: center;
-      padding: 40px 20px;
-      color: #a0aec0;
-      font-size: 14px;
-  }
-
-  /* Global UI Elements */
-  .art-assistant-close-btn {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 32px;
-      height: 32px;
-      background: rgba(0,0,0,0.05);
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      z-index: 10;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #718096;
-      transition: all 0.2s;
-  }
-  
-  .art-assistant-close-btn:hover {
-      background: #e2e8f0;
-      color: #e53e3e;
-  }
-  
-  /* Buttons etc */
-  .art-assistant-icon-btn {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      border: none;
-      background: #f7fafc;
-      color: #718096;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
-  }
-  .art-assistant-icon-btn:hover { background: #edf2f7; color: #1a202c; }
-  
-  #art-assistant-send-btn {
-      width: 40px; height: 40px;
-      border-radius: 50%;
-      border: none;
-      background: #1a202c; /* Accent */
-      color: white;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
-  }
-  #art-assistant-send-btn:hover { transform: scale(1.05); }
-
-  /* New Action Buttons (Pill Format) */
-  .art-assistant-actions-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 8px;
-  }
-  .art-assistant-action-btn {
+  .art-sidebar-card {
       background: white;
-      border: 1px solid #e2e8f0;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
+      border-radius: 16px;
+      overflow: hidden;
+      text-decoration: none; color: inherit;
       transition: all 0.2s;
-      color: #4a5568;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+      display: flex; flex-direction: column;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   }
-  .art-assistant-action-btn:hover {
-      background: #f7fafc;
-      border-color: #cbd5e0;
-      transform: translateY(-1px);
+  .art-sidebar-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.08); }
+  
+  .art-sidebar-card img {
+      width: 100%; height: 140px; object-fit: cover;
   }
+  .art-sidebar-info { padding: 12px; }
+  .art-sidebar-title { font-size: 14px; font-weight: 700; margin: 0 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .art-sidebar-vendor { font-size: 12px; color: #718096; }
 
-  /* Floating Trigger */
-  .art-assistant-chat-btn {
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      background: #1a202c;
-      color: white;
-      padding: 14px 24px;
-      border-radius: 50px;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex; gap: 10px; align-items: center;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      z-index: 2147483645;
-      transition: all 0.3s;
-  }
-  .art-assistant-chat-btn:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
-  }
-
-  /* MOBILE RESPONSIVE */
-  @media (max-width: 768px) {
-      .art-assistant-chat-window {
-          width: 100%; height: 100%; max-height: 100%;
-          border-radius: 0;
-      }
-      .art-assistant-layout {
-          flex-direction: column;
-      }
-      .art-assistant-left-pane {
-          flex: 1; /* Chat takes full height initially */
-          border-right: none;
-      }
-      /* Hide sidebar on mobile for now, or make it toggleable? 
-         For simplicity, we'll keep it hidden or stacked at bottom?
-         Better approach: Stack it but make it small horizontally?
-         Let's HIDE sidebar on mobile and revert to inline carousel if needed?
-         Or just show 'View Recommendations' button.
-         Implementation: Let's stack it below chat but chat is flex 1.
-      */
-      .art-assistant-right-pane {
-          display: none; /* Hide sidebar on mobile to avoid clutter */
-      }
-      /* On mobile, we might want to fallback to inline carousel.
-         But for now, per request, dual pane implies desktop focus.
-         If mobile support needed, we would need significant logic changes.
-         I will stick to keeping Sidebar hidden on mobile.
-      */
+  /* --- INPUT AREA --- */
+  .art-input-wrapper {
+      padding: 24px 32px;
+      position: relative;
   }
   
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes modalSlideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes slideIn { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .art-input-bar {
+      background: white;
+      border-radius: 100px;
+      padding: 8px 8px 8px 24px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  }
+  
+  #art-assistant-input {
+      flex: 1; border: none; outline: none; font-size: 16px; background: transparent;
+  }
+  
+  .art-icon-btn, .art-send-btn {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s; font-size: 18px;
+  }
+  .art-icon-btn { background: transparent; color: #718096; }
+  .art-icon-btn:hover { background: #f0f4f8; }
+  
+  .art-send-btn { background: var(--art-primary); color: white; }
+  .art-send-btn:hover { transform: scale(1.05); }
+
+  /* --- ACTIONS --- */
+  .actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .action-pill { 
+      background: white; color: #1a1a1a; 
+      padding: 10px 20px; border-radius: 100px; 
+      font-size: 14px; font-weight: 600; cursor: pointer; 
+      border: 1px solid #e2e8f0; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      transition: all 0.2s;
+  }
+  .action-pill:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); background: #fdfdfd; }
+  
+  /* --- TRIGGER & CLOSE --- */
+  .art-assistant-trigger {
+      position: fixed; bottom: 30px; right: 30px;
+      background: var(--art-primary); color: white;
+      padding: 16px 28px; border-radius: 100px;
+      font-size: 16px; font-weight: 700; border: none;
+      cursor: pointer; z-index: 2000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  
+  .art-assistant-close-btn {
+      position: absolute; top: 20px; right: 20px; z-index: 2200;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: white; border: none; font-size: 24px; color: #718096;
+      cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .art-assistant-close-btn:hover { color: #e53e3e; transform: rotate(90deg); }
+
+  /* --- MOBILE --- */
+  @media(max-width: 768px) {
+      .art-assistant-container {
+          flex-direction: column; width: 100vw; height: 100vh;
+          border-radius: 0; gap: 0;
+      }
+      .art-assistant-panel { border-radius: 0; border: none; }
+      .art-sidebar-panel { display: none; /* Hide sidebar on mobile for now */ }
+      .art-chat-panel { flex: 1; }
+      .art-assistant-close-btn { top: 10px; right: 10px; }
+  }
+
+  @keyframes msgFade { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes slideUp { from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);} }
 </style>
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    // Elements
-    const backdrop = document.getElementById('art-assistant-backdrop');
-    const chatBtn = document.getElementById('art-assistant-chat-btn');
-    const closeBtn = document.getElementById('art-assistant-close-btn');
-    const sendBtn = document.getElementById('art-assistant-send-btn');
-    const input = document.getElementById('art-assistant-input');
-    const messagesContainer = document.getElementById('art-assistant-messages');
-    const sidebarGrid = document.getElementById('art-assistant-sidebar-grid');
-    const uploadBtn = document.getElementById('art-assistant-upload-btn');
-    const fileInput = document.getElementById('art-assistant-file-input');
-    
-    // Preview Elements
-    const previewArea = document.getElementById('art-assistant-preview-area');
-    const previewImg = document.getElementById('art-assistant-preview-img');
-    const clearPreviewBtn = document.getElementById('art-assistant-clear-preview');
+      const overlay = document.getElementById('art-assistant-overlay');
+      const container = document.getElementById('art-assistant-messages');
+      const sidebar = document.getElementById('art-sidebar-grid');
+      const input = document.getElementById('art-assistant-input');
+      
+      // State
+      let selectedImage = null;
 
-    let selectedImage = null;
+      // Toggle
+      document.getElementById('art-assistant-trigger').onclick = () => {
+          overlay.classList.remove('hidden');
+          if(container.children.length <= 1) showQuickActions();
+      };
+      
+      document.getElementById('art-assistant-close-btn').onclick = () => {
+          overlay.classList.add('hidden');
+      };
 
-    // Toggle Modal
-    function openModal() {
-        backdrop.classList.remove('hidden');
-        if (messagesContainer.children.length <= 1) {
-            showQuickActions();
-        }
-    }
-    
-    function closeModal() {
-        backdrop.classList.add('hidden');
-    }
+      // Upload
+      document.getElementById('art-assistant-upload-btn').onclick = () => {
+          document.getElementById('art-assistant-file-input').click();
+      };
+      
+      document.getElementById('art-assistant-file-input').onchange = (e) => {
+          const file = e.target.files[0];
+          if(file) {
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                  selectedImage = ev.target.result;
+                  document.getElementById('art-assistant-preview-img').src = selectedImage;
+                  document.getElementById('art-assistant-preview-area').classList.remove('hidden');
+              };
+              reader.readAsDataURL(file);
+          }
+      };
+      
+      document.getElementById('art-assistant-clear-preview').onclick = () => {
+          selectedImage = null;
+          document.getElementById('art-assistant-preview-area').classList.add('hidden');
+      };
 
-    chatBtn.addEventListener('click', openModal);
-    closeBtn.addEventListener('click', closeModal);
-    // Close on click outside
-    backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) closeModal();
-    });
+      // Send
+      const send = async (txt) => {
+          const text = txt || input.value.trim();
+          if(!text && !selectedImage) return;
+          
+          if(selectedImage) addMsg(selectedImage, 'user', true);
+          if(text) addMsg(text, 'user');
+          
+          input.value = ''; 
+          if(selectedImage) {
+              document.getElementById('art-assistant-clear-preview').click();
+          }
 
-    // Image Upload
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-             const img = new Image();
-             img.onload = function() {
-                  const canvas = document.createElement('canvas');
-                  const ctx = canvas.getContext('2d');
-                  const MAX = 800; 
-                  let w=img.width, h=img.height;
-                  if(w>h){ if(w>MAX){ h*=MAX/w; w=MAX; }} else { if(h>MAX){ w*=MAX/h; h=MAX; }}
-                  canvas.width=w; canvas.height=h;
-                  ctx.drawImage(img,0,0,w,h);
-                  selectedImage = canvas.toDataURL('image/jpeg', 0.7);
-                  
-                  previewImg.src = selectedImage;
-                  previewArea.classList.remove('hidden');
-                  input.focus();
-             }
-             img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
+          const loader = addLoader();
+          
+          try {
+              const res = await fetch('/apps/art-assistant', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({ message: text, image: selectedImage }) 
+              });
+              const data = await res.json();
+              loader.remove();
+              
+              if(data.reply) addMsg(data.reply, 'bot');
+              
+              if(data.type === 'carousel' && data.data && data.data.length > 0) {
+                  // SPLIT LOGIC
+                  const [hero, ...rest] = data.data;
+                  addHeroCard(hero); // Top result in chat
+                  updateSidebar(rest); // Rest in sidebar
+                  addMsg("I've highlighted the top match above, and added more options to the sidebar.", 'bot');
+              } else if (data.data && data.type==='actions') {
+                  addActions(data.data);
+              }
+
+          } catch(e) {
+              loader.remove();
+              addMsg("Sorry, I encountered an error.", 'bot');
+              console.error(e);
+          }
+      };
+
+      document.getElementById('art-assistant-send-btn').onclick = () => send();
+      input.onkeypress = (e) => { if(e.key==='Enter') send(); };
+
+      // Helpers
+      function addMsg(content, sender, isImg=false) {
+          const div = document.createElement('div');
+          div.className = `art-message ${sender}`;
+          if(isImg) {
+              div.innerHTML = `<img src="${content}" style="max-width:100%; border-radius:12px;">`;
+          } else {
+              div.innerHTML = content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+          }
+          container.appendChild(div);
+          container.scrollTop = container.scrollHeight;
       }
-    });
-
-    clearPreviewBtn.addEventListener('click', () => {
-        selectedImage=null; fileInput.value=""; previewArea.classList.add('hidden');
-    });
-
-    // Send Logic
-    async function sendMessage(text = null) {
-      const msgText = text || input.value.trim();
-      if (!msgText && !selectedImage) return;
-
-      // Add User Message
-      if(selectedImage) addMessage({type:'image', content:selectedImage}, 'user');
-      if(msgText) addMessage({type:'text', content:msgText}, 'user');
-
-      input.value = ''; selectedImage=null; fileInput.value=""; previewArea.classList.add('hidden');
-
-      const typingId = addTypingIndicator();
-
-      try {
-           const response = await fetch('/apps/art-assistant', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message: msgText, image: selectedImage }) // selectedImage needs to be captured before reset, simplified here
-           });
-           // Note: In real logic, capture content before reset.
-           
-           if (!response.ok) throw new Error("API Error");
-           const data = await response.json();
-           
-           removeMessage(typingId);
-           if (data.reply) addMessage({type:'text', content:data.reply}, 'bot');
-           
-           // UPDATE SIDEBAR ON CAROUSEL
-           if (data.type === 'carousel') {
-               updateSidebar(data.data);
-               addMessage({type:'text', content:"I've updated the curation sidebar with some recommendations for you. 👉"}, 'bot');
-           }
-           
-           if (data.type === 'actions') addActions(data.data);
-
-      } catch (e) {
-          removeMessage(typingId);
-          addMessage({type:'text', content: "Error: " + e.message}, 'bot');
+      
+      function addActions(items) {
+          const div = document.createElement('div');
+          div.className = 'actions-row';
+          items.forEach(i => {
+              const btn = document.createElement('div');
+              btn.className = 'action-pill';
+              btn.innerText = i.label;
+              btn.onclick = () => send(i.payload || i.label);
+              div.appendChild(btn);
+          });
+          container.appendChild(div);
+          container.scrollTop = container.scrollHeight;
       }
-    }
-    
-    // Fix: Capture value closure in actual event listener
-    sendBtn.addEventListener('click', () => sendMessage());
-    input.addEventListener('keypress', (e) => { if (e.key==='Enter') sendMessage(); });
-
-
-    // UI Helpers
-    function addMessage(msg, sender) {
-        const div = document.createElement('div');
-        div.classList.add('art-assistant-message', sender);
-        if(msg.type==='image') {
-            const img = document.createElement('img');
-            img.src = msg.content;
-            img.style.maxWidth='100%'; img.style.borderRadius='8px';
-            div.appendChild(img);
-        } else {
-            div.innerHTML = msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-        }
-        messagesContainer.appendChild(div);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        return div.id = 'msg-'+Date.now();
-    }
-
-    function addActions(actions) {
-        const container = document.createElement('div');
-        container.classList.add('art-assistant-actions-container');
-        actions.forEach(a => {
-            const btn = document.createElement('button');
-            btn.classList.add('art-assistant-action-btn');
-            btn.textContent = a.label;
-            btn.onclick = () => sendMessage(a.payload || a.label);
-            container.appendChild(btn);
-        });
-        messagesContainer.appendChild(container);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-
-    function showQuickActions() {
-        addActions([
-            { label: "Help me choose", payload: "help" },
-            { label: "Visual Search", payload: "visual search" },
-            { label: "Vastu Guide", payload: "vastu" }
-        ]);
-    }
-
-    function addTypingIndicator() {
-        const div = document.createElement('div');
-        div.classList.add('art-assistant-message', 'bot');
-        div.textContent = '...';
-        div.id = 'typing';
-        messagesContainer.appendChild(div);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        return div.id;
-    }
-
-    function removeMessage(id) {
-        const el = document.getElementById(id);
-        if(el) el.remove();
-    }
-
-    // --- SIDEBAR LOGIC (NEW) ---
-    function updateSidebar(products) {
-        sidebarGrid.innerHTML = ''; // Clear previous
-        
-        if (!products || products.length === 0) {
-            sidebarGrid.innerHTML = '<div class="art-assistant-empty-state"><p>No results found.</p></div>';
-            return;
-        }
-
-        products.forEach(p => {
-            const card = document.createElement('a');
-            card.classList.add('art-assistant-sidebar-card');
-            card.href = p.url;
-            card.target = '_blank';
-            
-            card.innerHTML = `
-                <img src="${p.image}" alt="${p.title}">
-                <div class="art-assistant-card-info">
-                    <h4 class="art-assistant-card-title">${p.title}</h4>
-                    <span class="art-assistant-card-vendor">${p.vendor || 'Artist'}</span>
-                    <span class="art-assistant-card-price">${p.price}</span>
-                </div>
-            `;
-            sidebarGrid.appendChild(card);
-        });
-    }
-
+      
+      function showQuickActions() {
+          addActions([
+            { label: "Living Room", payload: "flow_room:Living Room" },
+            { label: "Bedroom", payload: "flow_room:Bedroom" },
+            { label: "Visual Search", payload: "visual search" }
+          ]);
+      }
+      
+      function addLoader() {
+          const div = document.createElement('div');
+          div.className = 'art-message bot';
+          div.innerText = '...';
+          container.appendChild(div);
+          return div;
+      }
+      
+      function addHeroCard(p) {
+          const a = document.createElement('a');
+          a.className = 'art-hero-card';
+          a.href = p.url; a.target = "_blank";
+          a.innerHTML = `
+             <div class="art-hero-img-wrapper"><img src="${p.image}"></div>
+             <div class="art-hero-content">
+                 <h4 class="art-hero-title">${p.title}</h4>
+                 <span class="art-hero-vendor">${p.vendor}</span>
+                 <p class="art-hero-desc">Interactive artisan furniture decorating art card...</p>
+                 <div class="art-pill-btn">View in Room</div>
+             </div>
+          `;
+          container.appendChild(a);
+          container.scrollTop = container.scrollHeight;
+      }
+      
+      function updateSidebar(list) {
+          sidebar.innerHTML = '';
+          if(!list.length) return;
+          list.forEach(p => {
+              const div = document.createElement('a');
+              div.className = 'art-sidebar-card';
+              div.href = p.url; div.target = "_blank";
+              div.innerHTML = `
+                  <img src="${p.image}">
+                  <div class="art-sidebar-info">
+                      <div class="art-sidebar-title">${p.title}</div>
+                      <div class="art-sidebar-vendor">${p.vendor}</div>
+                  </div>
+              `;
+              sidebar.appendChild(div);
+          });
+      }
   });
 </script>
 
 {% schema %}
-{
-  "name": "Art Assistant Chat",
-  "target": "body",
-  "settings": []
-}
+{ "name": "Art Assistant Full", "target": "body", "settings": [] }
 {% endschema %}
