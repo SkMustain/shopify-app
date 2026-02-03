@@ -225,48 +225,69 @@ export const action = async ({ request }) => {
       }
     }
     else {
-      // Standard Text Handling with PURE AI BRAIN (No Conditions)
+      // Standard Text Handling: HYBRID INTELLIGENCE (Local Micro-Brain + Cloud AI)
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
-      let brainResult = { type: "search", query: userMessage }; // Default to basic search
+      // --- ANTIGRAVITY MICRO-BRAIN (Local NLP) ---
+      // A custom lightweight classifier to handle social cues instantly.
+      const classifyLocalMatrix = (text) => {
+        const t = text.toLowerCase().trim();
+        const tokens = t.split(/[\s,!.?]+/); // Tokenize
 
-      // REGEX GUARD REMOVED per user request
+        const vocabulary = {
+          greeting: ["hi", "hello", "hey", "hay", "helo", "sup", "yo", "bro", "bhai", "dude", "kaise", "greetings"],
+          closing: ["bye", "goodbye", "tata", "cya"],
+          gratitude: ["thanks", "thank", "thx", "shukriya", "dhanaywad"]
+        };
 
-      if (apiKeySetting && apiKeySetting.value) {
+        let score = { chat: 0, search: 0 };
+
+        // Analysis
+        tokens.forEach(word => {
+          if (vocabulary.greeting.includes(word)) score.chat += 2;
+          if (vocabulary.closing.includes(word)) score.chat += 2;
+          if (vocabulary.gratitude.includes(word)) score.chat += 2;
+        });
+
+        // Context Heuristics
+        if (t.length < 5) score.chat += 1; // Very short is usually chat
+        if (t.includes("art") || t.includes("buy") || t.includes("price") || t.includes("painting")) score.search += 3;
+
+        // Decision (Bias towards Chat for slang)
+        if (score.search > 0) return "unknown"; // Potential intent, let Gemini decide
+        if (score.chat >= 2) return "chat"; // Strong social signal
+
+        return "unknown"; // Default to Gemini
+      };
+
+      let brainResult = { type: "search", query: userMessage };
+
+      // 1. Run Local Micro-Brain
+      const localIntent = classifyLocalMatrix(userMessage);
+      console.log(`Micro-Brain Analysis: ${localIntent}`);
+
+      if (localIntent === "chat") {
+        brainResult = { type: "chat", reply: "Hello! polite 👋 I am your smart Art Assistant. How can I help you today?" };
+      }
+      // 2. If unknown, consult Cloud Brain (Gemini)
+      else if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        // FORCE USE GEMINI 2.0 FLASH FOR SLANG UNDERSTANDING
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         try {
-          // PURE BRAIN PROMPT
+          // CLOUD BRAIN PROMPT
           const brainPrompt = `
                 User Input: "${userMessage}"
-                Role: Intelligent Art Assistant (Chat + Curator).
+                Role: Intelligent Art Assistant.
                 
-                Task: Classify User Intent accurately.
+                Task: Classify User Intent.
                 
-                PATH 1: "chat"
-                - Trigger: User says "Hi", "Hello", "Bro", "Bhai", "Hay", "Sup", "Yo", "Thanks", "Bye", "Who are you", or uses slang / gibberish.
-                - Trigger: User is asking general questions NOT about buying art.
-                - Action: Write a witty, friendly, 1-sentence reply.
-                - NOTE: "Bhai" means Brother. "Hay" means Hey. Treat these as greetings.
-                
-                PATH 2: "refine"
-                - Trigger: User asks for art but is VAGUE (e.g. "I want art", "Office paintings", "Bedroom decor", "Best sellers").
-                - Condition: Missing specific Style, Vibe, or Color.
-                - Action: Ask ONE specific follow-up question.
-                
-                PATH 3: "search"
-                - Trigger: User SPECIFICALLY describes a product to buy (e.g. "Blue abstract", "Modern office art", "Vastu for North wall").
-                - Action: Extract a robust search query.
+                PATH 1: "chat" (General conversation, Slang, Greetings)
+                PATH 2: "refine" (User wants art but is vague)
+                PATH 3: "search" (User describes specific art)
 
-                Return JSON ONLY:
-                {
-                   "type": "chat" | "refine" | "search",
-                   "reply": "string (for chat/refine)",
-                   "search_query": "string (for search)"
-                }
+                Return JSON ONLY: { "type": "chat" | "refine" | "search", "reply": "...", "search_query": "..." }
              `;
 
           const result = await model.generateContent(brainPrompt);
@@ -276,7 +297,6 @@ export const action = async ({ request }) => {
 
           if (jsonMatch) {
             brainResult = JSON.parse(jsonMatch[0]);
-            console.log("Brain Decision:", brainResult);
           }
         } catch (e) {
           console.error("Central Brain Error:", e);
