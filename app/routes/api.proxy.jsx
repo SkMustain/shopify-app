@@ -300,6 +300,7 @@ export const action = async ({ request }) => {
                       handle
                       description(truncateAt: 100)
                       productType
+                      vendor
                       tags
                       priceRangeV2 { minVariantPrice { amount currencyCode } }
                       featuredImage { url }
@@ -409,7 +410,8 @@ export const action = async ({ request }) => {
           title: node.title,
           price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
           image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-          url: `/products/${node.handle}`
+          url: `/products/${node.handle}`,
+          vendor: node.vendor || "Art Assistant"
         }));
 
         responseData = {
