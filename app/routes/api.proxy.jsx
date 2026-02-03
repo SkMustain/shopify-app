@@ -233,8 +233,8 @@ export const action = async ({ request }) => {
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        // Use 2.0-flash for high-level reasoning
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        // Use 1.5-flash for reliability/stability
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         try {
           // CENTRAL BRAIN PROMPT
@@ -245,13 +245,15 @@ export const action = async ({ request }) => {
                 Task: Analyze the input and select ONE path.
                 
                 PATH 1: "chat"
-                - Trigger: User says "Hi", "Bro", "Hay", "Thanks", "Who are you", or gibberish.
+                - Trigger: User says "Hi", "Hello", "Bro", "Hay", "Sup", "Yo", "Thanks", "Bye", "Who are you", or gibberish.
                 - Action: Write a friendly, conversational reply.
+                - CRITICAL: If the user says "Hay" or "Bro", do NOT search for art. Reply locally.
                 
                 PATH 2: "refine"
-                - Trigger: User asks for art but is VAGUE (e.g. "I want art", "Office paintings", "Bedroom decor").
-                - Condition: Missing Style, Vibe, or Color.
-                - Action: Ask ONE specific follow-up question to narrow down their taste (e.g. "To match your office, are you looking for curious modern art or something classic?").
+                - Trigger: User asks for art but is VAGUE (e.g. "I want art", "Office paintings", "Bedroom decor", "Best sellers").
+                - Condition: Missing specific Style, Vibe, or Color.
+                - Action: Ask ONE specific follow-up question to narrow down their taste.
+                - Example: "For your office, do you prefer Modern or Classic?"
                 
                 PATH 3: "search"
                 - Trigger: User provides specific details (e.g. "Blue abstract", "Modern office art", "Vastu for North wall").
