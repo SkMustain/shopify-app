@@ -60,7 +60,7 @@ export const action = async ({ request }) => {
 
           // Helper to try models in sequence
           const generateWithFallback = async (prompt, imagePart) => {
-            const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+            const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
             let errorLog = [];
 
             for (const modelName of modelsToTry) {
@@ -225,12 +225,47 @@ export const action = async ({ request }) => {
       }
     }
     else {
-      // Standard Text
+      // Standard Text Handling with INTENT CLASSIFICATION
+      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+
+      if (apiKeySetting && apiKeySetting.value) {
+        const { GoogleGenerativeAI } = await import("@google/generative-ai");
+        const genAI = new GoogleGenerativeAI(apiKeySetting.value);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
+
+        try {
+          const intentPrompt = `
+                User says: "${userMessage}"
+                Act as a Friendly Art Store Assistant.
+                Classify intent:
+                1. "small_talk": Greetings (hi, hello), questions about you, thank yous, or general chat NOT related to buying/finding specific art.
+                2. "search": Requests for art, descriptions of rooms, specific subjects (e.g. "blue abstract"), or Vastu questions.
+                
+                Return JSON: { "intent": "small_talk" | "search", "reply": "..." }
+                If small_talk, write a warm, helpful, human-like reply in "reply".
+                If search, leave "reply" empty (or null).
+             `;
+
+          const result = await model.generateContent(intentPrompt);
+          const text = result.response.text();
+          const jsonMatch = text.match(/\{.*\}/s);
+          if (jsonMatch) {
+            const json = JSON.parse(jsonMatch[0]);
+            if (json.intent === "small_talk" && json.reply) {
+              return Response.json({ reply: json.reply }, { headers: cors?.headers || {} });
+            }
+          }
+        } catch (e) {
+          console.error("Intent Classifier Error:", e);
+          // Fallthrough to search if error
+        }
+      }
+
+      // If Not Small Talk, Proceed to Search
       userContext = userMessage;
       // Basic detection for format in text
       if (userMessage.includes("poster") || userMessage.includes("print")) desiredFormat = "poster";
       else if (userMessage.includes("painting") || userMessage.includes("canvas")) desiredFormat = "painting";
-
       shouldSearch = true;
     }
 
@@ -255,7 +290,7 @@ export const action = async ({ request }) => {
 
         if (searchQueries.length === 0) {
           try {
-            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
 
             // Expert Prompt with Format Awareness AND Stronger Logic
             const qPrompt = `Act as an Elite Art Curator. User input: "${effectiveQuery}". 
@@ -373,7 +408,7 @@ export const action = async ({ request }) => {
                     Return JSON: { "selectedHandles": ["..."], "expertAdvice": "I chose these because..." }
                 `;
 
-          const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
           const result = await model.generateContent(curationPrompt);
           const text = result.response.text();
 
