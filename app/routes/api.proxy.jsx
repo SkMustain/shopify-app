@@ -230,6 +230,14 @@ export const action = async ({ request }) => {
 
       let brainResult = { type: "search", query: userMessage }; // Default to basic search
 
+      // 0. AGGRESSIVE REGEX GUARD (Instant Fix for "Hay", "Bro", "Sup")
+      const CHAT_REGEX = /^(hi|hello|hey|hay|helo|bro|sup|yo|dude|greetings|good morning|good afternoon|thanks|thank you|thx|bye|test)/i;
+      if (CHAT_REGEX.test(userMessage.trim())) {
+        return Response.json({
+          reply: "Hello! polite 👋 I am your Art Assistant. Ask me about finding art for your room, or tell me what style you like!"
+        }, { headers: cors?.headers || {} });
+      }
+
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
