@@ -360,12 +360,12 @@
       };
 
       // Send
-      const send = async (txt) => {
+      const send = async (txt, displayLabel = null) => {
           const text = txt || input.value.trim();
           if(!text && !selectedImage) return;
           
           if(selectedImage) addMsg(selectedImage, 'user', true);
-          if(text) addMsg(text, 'user');
+          if(text) addMsg(displayLabel || text, 'user');
           
           input.value = ''; 
           if(selectedImage) {
@@ -425,7 +425,7 @@
               const btn = document.createElement('div');
               btn.className = 'action-pill';
               btn.innerText = i.label;
-              btn.onclick = () => send(i.payload || i.label);
+              btn.onclick = () => send(i.payload || i.label, i.label);
               div.appendChild(btn);
           });
           container.appendChild(div);
