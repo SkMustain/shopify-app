@@ -228,6 +228,15 @@ export const action = async ({ request }) => {
       // Standard Text Handling with INTENT CLASSIFICATION
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
+      // 0. QUICK REGEX GUARD for Greetings (No API Latency)
+      // Matches "hi", "hello", "hey", "thanks", "thank you"
+      const SMALL_TALK_REGEX = /^(hi|hello|hey|helo|greetings|good morning|thanks|thank you|thx)/i;
+      if (SMALL_TALK_REGEX.test(userMessage.trim())) {
+        return Response.json({
+          reply: "Hello! polite 👋 I am your Art Assistant. Ask me about finding art, or tell me your room style!"
+        }, { headers: cors?.headers || {} });
+      }
+
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
