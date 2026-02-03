@@ -133,8 +133,8 @@
   .art-panel-header h2, .art-panel-header h3 {
       margin: 0; font-family: 'Inter', sans-serif; color: #1a1a1a; letter-spacing: -0.5px;
   }
-  .art-panel-header h2 { font-size: 28px; font-weight: 800; }
-  .art-panel-header h3 { font-size: 20px; font-weight: 700; }
+  .art-panel-header h2 { font-size: 24px; font-weight: 800; }
+  .art-panel-header h3 { font-size: 18px; font-weight: 700; }
 
   /* --- MESSAGES --- */
   .art-messages-container {
@@ -148,11 +148,11 @@
 
   .art-message {
       max-width: 80%;
-      padding: 18px 24px;
-      border-radius: 20px;
+      padding: 14px 20px;
+      border-radius: 18px;
       font-family: 'Inter', sans-serif;
-      font-size: 16px; 
-      line-height: 1.6;
+      font-size: 14px; 
+      line-height: 1.5;
       animation: msgFade 0.4s ease forwards;
   }
 
@@ -201,9 +201,9 @@
   }
 
   .art-hero-content {
-      flex: 1; display: flex; flex-direction: column; gap: 8px;
+      flex: 1; display: flex; flex-direction: column; gap: 6px;
   }
-  .art-hero-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .art-hero-title { font-size: 16px; font-weight: 700; margin: 0; }
   .art-hero-vendor { font-size: 14px; color: #718096; font-weight: 500; }
   .art-hero-desc { font-size: 14px; color: #4a5568; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   
@@ -238,7 +238,7 @@
       width: 100%; height: 140px; object-fit: cover;
   }
   .art-sidebar-info { padding: 12px; }
-  .art-sidebar-title { font-size: 14px; font-weight: 700; margin: 0 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .art-sidebar-title { font-size: 13px; font-weight: 700; margin: 0 0 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   .art-sidebar-vendor { font-size: 12px; color: #718096; }
 
   /* --- INPUT AREA --- */
@@ -492,8 +492,7 @@
                  <h4 class="art-hero-title">${p.title}</h4>
                  <p class="art-hero-desc">Interactive artisan furniture decorating art card...</p>
                  <div class="actions-row">
-                    <div class="art-pill-btn secondary" onclick="window.open('${p.url}', '_blank')">View Details</div>
-                    <div class="art-pill-btn primary" onclick="addToCart('${p.variantId}', this)">Add to Cart</div>
+                    <div class="art-pill-btn primary" onclick="window.open('${p.url}', '_blank')">View</div>
                  </div>
              </div>
           `;
@@ -512,7 +511,7 @@
                   <img src="${p.image}">
                   <div class="art-sidebar-info">
                       <div class="art-sidebar-title">${p.title}</div>
-                      <button class="art-mini-add-btn" onclick="event.preventDefault(); addToCart('${p.variantId}', this)">+ Add</button>
+                      <div class="art-mini-add-btn" style="text-align:center;" onclick="window.open('${p.url}', '_blank')">View</div>
                   </div>
               `;
               sidebar.appendChild(div);
