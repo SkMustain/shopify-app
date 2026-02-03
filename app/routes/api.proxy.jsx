@@ -231,27 +231,35 @@ export const action = async ({ request }) => {
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
+        // Use 1.5-flash for the classifier (faster, more reliable for simple tasks)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         try {
           const intentPrompt = `
                 User says: "${userMessage}"
                 Act as a Friendly Art Store Assistant.
-                Classify intent:
-                1. "small_talk": Greetings (hi, hello), questions about you, thank yous, or general chat NOT related to buying/finding specific art.
-                2. "search": Requests for art, descriptions of rooms, specific subjects (e.g. "blue abstract"), or Vastu questions.
                 
-                Return JSON: { "intent": "small_talk" | "search", "reply": "..." }
-                If small_talk, write a warm, helpful, human-like reply in "reply".
-                If search, leave "reply" empty (or null).
+                Task: Determine if this is "Small Talk" (Greetings, thanks, who are you) OR a "Search Request" (buying art, specific topics).
+                
+                RESPONSE RULES:
+                1. If Small Talk: Return JSON { "is_small_talk": true, "reply": "Your friendly reply here." }
+                2. If Search Request: Return JSON { "is_small_talk": false }
+                
+                Return ONLY clean JSON.
              `;
 
           const result = await model.generateContent(intentPrompt);
           const text = result.response.text();
-          const jsonMatch = text.match(/\{.*\}/s);
+
+          // Robust JSON Clean (remove markdown code blocks)
+          const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+          const jsonMatch = cleanedText.match(/\{.*\}/s);
+
           if (jsonMatch) {
             const json = JSON.parse(jsonMatch[0]);
-            if (json.intent === "small_talk" && json.reply) {
+            console.log("Intent Analysis:", json);
+
+            if (json.is_small_talk === true && json.reply) {
               return Response.json({ reply: json.reply }, { headers: cors?.headers || {} });
             }
           }
