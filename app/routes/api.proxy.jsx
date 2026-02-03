@@ -225,67 +225,46 @@ export const action = async ({ request }) => {
       }
     }
     else {
-      // Standard Text Handling: HYBRID INTELLIGENCE (Local Micro-Brain + Cloud AI)
+      // Standard Text Handling: POWERED BY ANTIGRAVITY BRAIN v2
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
-      // --- ANTIGRAVITY MICRO-BRAIN (Local NLP) ---
-      // A custom lightweight classifier to handle social cues instantly.
-      const classifyLocalMatrix = (text) => {
-        const t = text.toLowerCase().trim();
-        const tokens = t.split(/[\s,!.?]+/); // Tokenize
+      // Import Brain Service
+      const { AntigravityBrain } = await import("../services/antigravity.server");
 
-        const vocabulary = {
-          greeting: ["hi", "hello", "hey", "hay", "helo", "sup", "yo", "bro", "bhai", "dude", "kaise", "greetings"],
-          closing: ["bye", "goodbye", "tata", "cya"],
-          gratitude: ["thanks", "thank", "thx", "shukriya", "dhanaywad"]
-        };
-
-        let score = { chat: 0, search: 0 };
-
-        // Analysis
-        tokens.forEach(word => {
-          if (vocabulary.greeting.includes(word)) score.chat += 2;
-          if (vocabulary.closing.includes(word)) score.chat += 2;
-          if (vocabulary.gratitude.includes(word)) score.chat += 2;
-        });
-
-        // Context Heuristics
-        if (t.length < 5) score.chat += 1; // Very short is usually chat
-        if (t.includes("art") || t.includes("buy") || t.includes("price") || t.includes("painting")) score.search += 3;
-
-        // Decision (Bias towards Chat for slang)
-        if (score.search > 0) return "unknown"; // Potential intent, let Gemini decide
-        if (score.chat >= 2) return "chat"; // Strong social signal
-
-        return "unknown"; // Default to Gemini
-      };
+      // 1. Run Local Brain Analysis (0ms Latency)
+      const brainAnalysis = AntigravityBrain.process(userMessage);
+      console.log("Antigravity Brain Decision:", brainAnalysis);
 
       let brainResult = { type: "search", query: userMessage };
 
-      // 1. Run Local Micro-Brain
-      const localIntent = classifyLocalMatrix(userMessage);
-      console.log(`Micro-Brain Analysis: ${localIntent}`);
-
-      if (localIntent === "chat") {
-        brainResult = { type: "chat", reply: "Hello! polite 👋 I am your smart Art Assistant. How can I help you today?" };
+      // A. High Confidence Local Chat
+      if (brainAnalysis.intent === "chat" && brainAnalysis.confidence > 0.8) {
+        brainResult = {
+          type: "chat",
+          reply: brainAnalysis.reply || "Hello! 👋 I am your smart Art Assistant. How can I help you today?"
+        };
       }
-      // 2. If unknown, consult Cloud Brain (Gemini)
+
+      // B. Cloud Intelligence (Gemini 2.0) - For Search/Refine
       else if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         try {
-          // CLOUD BRAIN PROMPT
+          // CLOUD BRAIN PROMPT (Enhanced with Local Entities)
+          const entitiesCtx = JSON.stringify(brainAnalysis.entities);
+
           const brainPrompt = `
                 User Input: "${userMessage}"
+                Extracted Context (Local Brain): ${entitiesCtx}
                 Role: Intelligent Art Assistant.
                 
                 Task: Classify User Intent.
                 
-                PATH 1: "chat" (General conversation, Slang, Greetings)
-                PATH 2: "refine" (User wants art but is vague)
-                PATH 3: "search" (User describes specific art)
+                PATH 1: "chat" (Slang, Greetings, Off-topic)
+                PATH 2: "refine" (Vague requests)
+                PATH 3: "search" (Specific requests)
 
                 Return JSON ONLY: { "type": "chat" | "refine" | "search", "reply": "...", "search_query": "..." }
              `;
@@ -299,7 +278,7 @@ export const action = async ({ request }) => {
             brainResult = JSON.parse(jsonMatch[0]);
           }
         } catch (e) {
-          console.error("Central Brain Error:", e);
+          console.error("Cloud Brain Error:", e);
         }
       }
 
