@@ -225,46 +225,40 @@ export const action = async ({ request }) => {
       }
     }
     else {
-      // Standard Text Handling with CENTRAL INTELLIGENCE
+      // Standard Text Handling with PURE AI BRAIN (No Conditions)
       const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
       let brainResult = { type: "search", query: userMessage }; // Default to basic search
 
-      // 0. AGGRESSIVE REGEX GUARD (Instant Fix for "Hay", "Bro", "Sup")
-      const CHAT_REGEX = /^(hi|hello|hey|hay|helo|bro|sup|yo|dude|greetings|good morning|good afternoon|thanks|thank you|thx|bye|test)/i;
-      if (CHAT_REGEX.test(userMessage.trim())) {
-        return Response.json({
-          reply: "Hello! polite 👋 I am your Art Assistant. Ask me about finding art for your room, or tell me what style you like!"
-        }, { headers: cors?.headers || {} });
-      }
+      // REGEX GUARD REMOVED per user request
 
       if (apiKeySetting && apiKeySetting.value) {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        // Use 1.5-flash for reliability/stability
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // FORCE USE GEMINI 2.0 FLASH FOR SLANG UNDERSTANDING
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         try {
-          // CENTRAL BRAIN PROMPT
+          // PURE BRAIN PROMPT
           const brainPrompt = `
                 User Input: "${userMessage}"
-                Role: Expert Art Curator & Sales Assistant.
+                Role: Intelligent Art Assistant (Chat + Curator).
                 
-                Task: Analyze the input and select ONE path.
+                Task: Classify User Intent accurately.
                 
                 PATH 1: "chat"
-                - Trigger: User says "Hi", "Hello", "Bro", "Hay", "Sup", "Yo", "Thanks", "Bye", "Who are you", or gibberish.
-                - Action: Write a friendly, conversational reply.
-                - CRITICAL: If the user says "Hay" or "Bro", do NOT search for art. Reply locally.
+                - Trigger: User says "Hi", "Hello", "Bro", "Bhai", "Hay", "Sup", "Yo", "Thanks", "Bye", "Who are you", or uses slang / gibberish.
+                - Trigger: User is asking general questions NOT about buying art.
+                - Action: Write a witty, friendly, 1-sentence reply.
+                - NOTE: "Bhai" means Brother. "Hay" means Hey. Treat these as greetings.
                 
                 PATH 2: "refine"
                 - Trigger: User asks for art but is VAGUE (e.g. "I want art", "Office paintings", "Bedroom decor", "Best sellers").
                 - Condition: Missing specific Style, Vibe, or Color.
-                - Action: Ask ONE specific follow-up question to narrow down their taste.
-                - Example: "For your office, do you prefer Modern or Classic?"
+                - Action: Ask ONE specific follow-up question.
                 
                 PATH 3: "search"
-                - Trigger: User provides specific details (e.g. "Blue abstract", "Modern office art", "Vastu for North wall").
+                - Trigger: User SPECIFICALLY describes a product to buy (e.g. "Blue abstract", "Modern office art", "Vastu for North wall").
                 - Action: Extract a robust search query.
 
                 Return JSON ONLY:
