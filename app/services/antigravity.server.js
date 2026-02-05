@@ -40,6 +40,11 @@ export const AntigravityBrain = {
 
     // Checks if input roughly matches a token (allows 1-2 typos)
     isFuzzyMatch(inputWord, targetWord) {
+        // STRICTER RULE: Words < 3 chars must match EXACTLY. Prevents "i" -> "hi".
+        if (targetWord.length < 3 || inputWord.length < 3) {
+            return inputWord === targetWord;
+        }
+
         if (Math.abs(inputWord.length - targetWord.length) > 2) return false;
         const dist = this.getDistance(inputWord, targetWord);
         return dist <= 1 || (targetWord.length > 5 && dist <= 2);
@@ -69,11 +74,12 @@ export const AntigravityBrain = {
 
         tokens.forEach(word => {
             // Fuzzy Check against Vocab
+            // Skip "i" or very short words for greetings unless exact
             this.vocab.greetings.forEach(g => { if (this.isFuzzyMatch(word, g)) scores.chat += 3; });
             this.vocab.gratitude.forEach(g => { if (this.isFuzzyMatch(word, g)) scores.chat += 2; });
 
-            // Keywords
-            if (["buy", "price", "cost", "shipping", "canvas", "poster", "art"].includes(word)) scores.search += 2;
+            // Keywords - Expanded List
+            if (["buy", "price", "cost", "shipping", "canvas", "poster", "art", "painting", "paintings", "print", "prints", "decor", "frame", "wall"].includes(word)) scores.search += 2;
         });
 
         // Boost Search if entities found
