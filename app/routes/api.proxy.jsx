@@ -83,12 +83,19 @@ export const action = async ({ request }) => {
             inlineData: { data: base64Data, mimeType: "image/jpeg" },
           };
 
-          const prompt = `Act as an Expert Interior Designer. Analyze this room's interior design style, color palette, and mood.
-          Identify what kind of wall art would elevate the space (e.g. adding warmth to a cold room, or a focal point).
+          const prompt = `Act as an Expert Interior Designer. 
+          User's Question: "${userMessage ? userMessage.replace(/"/g, "'") : "No specific question, just give advice."}"
+          
+          Analyze this room's interior design style, color palette, and mood.
+          
+          TASK:
+          1. If the user asked a specific question (e.g. "What color fits?", "Is this modern?"), ANSWER IT directly and succinctly in the 'critique' field.
+          2. If no specific question is present, identify what wall art would elevate the space.
+          3. Generate Shopify search terms that match your advice/answer.
           
           Return a JSON object with keys: 
-          'critique': "A 2-sentence expert critique identifying the style and what the room needs.",
-          'searchQueries': (A JSON ARRAY of 3 SIMPLE, HIGH-RECALL Shopify search terms. e.g. ["Abstract", "Beige Art", "Canvas"]. Do NOT use complex phrases like "Transitional decor". Keep it simple to find products.),
+          'critique': "Direct answer to user's question, OR a 2-sentence expert critique.",
+          'searchQueries': (A JSON ARRAY of 3 SIMPLE, HIGH-RECALL Shopify search terms. e.g. ["Abstract", "Beige Art", "Canvas"]. Do NOT use complex phrases. Keep it simple.),
           'style': "Short style name (e.g. Minimalist)"
 
           Return ONLY the JSON string.`;

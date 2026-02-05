@@ -4,6 +4,12 @@
         <!-- Close Button -->
         <button id="art-assistant-close-btn" class="art-assistant-close-btn">&times;</button>
 
+        <!-- MOBILE TABS -->
+        <div class="art-mobile-tabs">
+            <button class="art-tab-btn active" id="tab-chat">Chat</button>
+            <button class="art-tab-btn" id="tab-sidebar">Picks</button>
+        </div>
+
         <!-- LEFT PANEL: CHAT -->
         <div class="art-assistant-panel art-chat-panel">
             <header class="art-panel-header">
@@ -262,66 +268,77 @@
 
   /* --- SIDEBAR GRID --- */
   .art-sidebar-grid {
-      padding: 0 40px 40px;
+      padding: 0 30px 40px;
       overflow-y: auto;
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 20px;
+      align-items: start; /* Prevent stretching */
   }
   
   .art-sidebar-card {
       background: white;
-      border-radius: 20px;
+      border-radius: 16px;
       overflow: hidden;
       text-decoration: none; color: inherit;
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex; flex-direction: column;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-      border: 1px solid rgba(0,0,0,0.03);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.04);
+      height: auto;
       position: relative;
-      height: 100%; /* Fill grid cell */
   }
   .art-sidebar-card:hover { 
-      transform: translateY(-8px); 
-      box-shadow: 0 20px 40px rgba(0,0,0,0.12); 
+      transform: translateY(-5px); 
+      box-shadow: 0 15px 30px rgba(0,0,0,0.1); 
+      z-index: 2;
   }
   
   .art-sidebar-card img {
       width: 100%; 
-      aspect-ratio: 1 / 1; /* Square for consistency */
-      object-fit: contain; /* Show full image */
-      background: #f8f9fa; /* Light bg for transparent pngs or varying ratios */
+      height: 180px; 
+      object-fit: cover; /* Fill the area nicely */
+      background: #f4f6f8;
+      display: block;
   }
 
   .art-sidebar-info { 
-      padding: 18px; 
-      flex: 1; 
+      padding: 12px 14px; 
       display: flex; 
       flex-direction: column; 
-      justify-content: space-between;
-      gap: 12px;
+      gap: 8px;
+  }
+  
+  .art-sidebar-vendor { 
+      font-size: 11px; 
+      color: #999; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+      font-weight: 600;
   }
   
   .art-sidebar-title { 
-      font-size: 16px; font-weight: 600; margin: 0; 
+      font-size: 14px; 
+      font-weight: 700; 
+      margin: 0; 
       font-family: 'Outfit', sans-serif;
-      line-height: 1.3;
+      line-height: 1.35;
+      color: #1a1a1a;
       display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  
-  .art-sidebar-vendor { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
 
   .art-view-btn {
       width: 100%;
       background: white;
       color: var(--art-primary);
       border: 1px solid #e2e8f0;
-      padding: 10px;
-      border-radius: 12px;
-      font-weight: 600; font-size: 14px;
+      padding: 8px;
+      border-radius: 8px;
+      font-weight: 600; font-size: 13px;
       cursor: pointer;
       transition: all 0.2s;
       text-align: center;
+      margin-top: 4px;
   }
   .art-sidebar-card:hover .art-view-btn {
       background: var(--art-primary);
@@ -331,7 +348,7 @@
 
   /* --- INPUT AREA --- */
   .art-input-wrapper {
-      padding: 30px 40px;
+      padding: 24px 30px;
       position: relative;
       background: white;
       border-top: 1px solid rgba(0,0,0,0.05);
@@ -339,7 +356,7 @@
 
   .art-preview-area {
       position: absolute;
-      bottom: 100px; left: 40px;
+      bottom: 90px; left: 30px;
       background: white;
       padding: 10px;
       border-radius: 16px;
@@ -349,7 +366,7 @@
       z-index: 10;
   }
   .art-preview-area img {
-      height: 90px; width: auto; border-radius: 10px; display: block;
+      height: 80px; width: auto; border-radius: 10px; display: block;
   }
   .art-preview-area.hidden { display: none; }
 
@@ -371,7 +388,7 @@
   }
   
   .art-icon-btn, .art-send-btn {
-      width: 48px; height: 48px; border-radius: 14px;
+      width: 44px; height: 44px; border-radius: 14px;
       border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: all 0.2s; font-size: 20px;
   }
@@ -389,11 +406,11 @@
   .art-send-btn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
 
   /* --- ACTIONS --- */
-  .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+  .actions-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
   .action-pill { 
       background: white; color: var(--art-text-main); 
-      padding: 10px 22px; border-radius: 100px; 
-      font-size: 14px; font-weight: 500; cursor: pointer; 
+      padding: 8px 18px; border-radius: 100px; 
+      font-size: 13px; font-weight: 500; cursor: pointer; 
       border: 1px solid #e2e8f0; 
       font-family: 'Outfit', sans-serif;
       transition: all 0.2s;
@@ -429,17 +446,93 @@
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(229, 62, 62, 0); } 100% { box-shadow: 0 0 0 0 rgba(229, 62, 62, 0); } }
 
   /* --- MOBILE --- */
+  .art-mobile-tabs { display: none; }
+
   @media(max-width: 900px) {
       .art-assistant-container {
           flex-direction: column; width: 100vw; height: 100vh;
           border-radius: 0; gap: 0; max-width: none;
+          background: #fdfdfd; 
       }
-      .art-assistant-panel { border-radius: 0; border: none; }
+      
+      .art-mobile-tabs {
+          display: flex;
+          padding: 15px 20px 0;
+          gap: 15px;
+          background: white;
+          border-bottom: 1px solid rgba(0,0,0,0.05);
+      }
+      
+      .art-tab-btn {
+          flex: 1;
+          padding: 12px;
+          background: none; border: none;
+          font-family: 'Outfit', sans-serif;
+          font-size: 16px; font-weight: 600;
+          color: #999;
+          border-bottom: 3px solid transparent;
+          cursor: pointer;
+      }
+      .art-tab-btn.active {
+          color: var(--art-primary);
+          border-bottom-color: var(--art-primary);
+      }
+
+      .art-assistant-panel { 
+          border-radius: 0; border: none; box-shadow: none; 
+          height: calc(100vh - 140px); /* Adjust for header/tabs */
+          display: none; /* Hide all by default, JS toggles */
+      }
+      
+      .art-assistant-panel.mobile-active {
+          display: flex;
+          animation: fadeIn 0.3s ease;
+      }
+
+      /* Default state if JS hasn't run yet */
+      .art-chat-panel { display: flex; } 
       .art-sidebar-panel { display: none; }
-      .art-chat-panel { flex: 1; }
+
       .art-hero-inner { flex-direction: column; }
       .art-hero-img-wrapper { width: 100%; height: 200px; }
+      
+      .art-input-wrapper {
+          padding: 15px;
+          padding-bottom: 30px; /* Safe area */
+      }
+      
+      .art-panel-header { padding: 20px; display: none; /* Tabs replace header title mostly */ }
+      .art-messages-container { padding: 15px; }
+      
+      /* Mobile Grid Optimization */
+      .art-sidebar-grid { 
+          padding: 15px; 
+          grid-template-columns: 1fr 1fr; /* Force 2 columns */
+          gap: 12px;
+      }
+      
+      /* Mobile Input Optimization */
+      .art-input-bar {
+          padding: 6px 8px 6px 14px;
+          gap: 6px;
+      }
+      .art-icon-btn, .art-send-btn {
+          width: 38px; height: 38px;
+          font-size: 18px;
+          flex-shrink: 0; /* Prevent squishing */
+      }
+      #art-assistant-input {
+          min-width: 0; /* Allow shrinking */
+          font-size: 15px; /* Prevent zoom on iOS */
+      }
+      
+      .art-assistant-close-btn {
+          top: 15px; right: 15px;
+          position: fixed;
+          z-index: 20;
+      }
   }
+  @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
 </style>
 
 <script>
@@ -449,6 +542,34 @@
       const sidebar = document.getElementById('art-sidebar-grid');
       const input = document.getElementById('art-assistant-input');
       
+      // Mobile Tabs
+      const chatTab = document.getElementById('tab-chat');
+      const sideTab = document.getElementById('tab-sidebar');
+      const chatPanel = document.querySelector('.art-chat-panel');
+      const sidePanel = document.querySelector('.art-sidebar-panel');
+      
+      function switchTab(target) {
+          if(target === 'chat') {
+              chatTab.classList.add('active');
+              sideTab.classList.remove('active');
+              chatPanel.classList.add('mobile-active');
+              sidePanel.classList.remove('mobile-active');
+              // Ensure display logic for CSS override
+              chatPanel.style.display = 'flex';
+              sidePanel.style.display = 'none';
+          } else {
+              sideTab.classList.add('active');
+              chatTab.classList.remove('active');
+              sidePanel.classList.add('mobile-active');
+              chatPanel.classList.remove('mobile-active');
+              sidePanel.style.display = 'flex';
+              chatPanel.style.display = 'none';
+          }
+      }
+      
+      chatTab.onclick = () => switchTab('chat');
+      sideTab.onclick = () => switchTab('sidebar');
+
       // State
       let selectedImage = null;
       let recognition = null;
@@ -666,10 +787,8 @@
               div.innerHTML = `
                   <img src="${p.image}">
                   <div class="art-sidebar-info">
-                      <div>
-                          <div class="art-sidebar-vendor">Featured</div>
-                          <div class="art-sidebar-title">${p.title}</div>
-                      </div>
+                      <div class="art-sidebar-vendor">Featured</div>
+                      <div class="art-sidebar-title">${p.title || 'Artwork'}</div>
                       <button class="art-view-btn">View</button>
                   </div>
               `;
@@ -682,3 +801,4 @@
 {% schema %}
 { "name": "Art Assistant Full", "target": "body", "settings": [] }
 {% endschema %}
+<!-- Updated: 2026-02-05 16:16 Backend Vision Update -->
