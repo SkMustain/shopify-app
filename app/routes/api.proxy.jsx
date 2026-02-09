@@ -504,8 +504,8 @@ export const action = async ({ request }) => {
           finalProducts = candidates.slice(0, 5);
         }
       } else {
-        // For Vastu (Tag Search) or no AI, just take the top 5 (which will be the tagged ones first)
-        finalProducts = candidates.slice(0, 5);
+        // For Vastu (Tag Search) or no AI, just take the top 15 (covering the user's "2-10" request)
+        finalProducts = candidates.slice(0, 15);
       }
 
       // 4. RESPONSE
