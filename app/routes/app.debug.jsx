@@ -1,5 +1,4 @@
-import { json } from "@remix-run/node";
-import { useLoaderData, Form } from "@remix-run/react";
+import { useLoaderData, Form } from "react-router"; // FIXED: Use react-router v7
 import { authenticate } from "../shopify.server";
 import {
     Page,
@@ -41,7 +40,7 @@ export const loader = async ({ request }) => {
     const responseJson = await response.json();
     const products = responseJson.data?.products?.edges.map(e => e.node) || [];
 
-    return json({ direction, products, tagQuery });
+    return { direction, products, tagQuery };
 };
 
 export default function Debug() {
