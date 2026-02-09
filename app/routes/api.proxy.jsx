@@ -155,7 +155,8 @@ export const action = async ({ request }) => {
           data: [
             { label: "Vastu Consultant", payload: "vastu_intro" },
             { label: "Living Room", payload: "flow_room:Living Room" },
-            { label: "Bedroom", payload: "flow_room:Bedroom" }
+            { label: "Bedroom", payload: "flow_room:Bedroom" },
+            { label: "Visual Search", payload: "visual search" }
           ]
         }, { headers: cors?.headers || {} });
       }
