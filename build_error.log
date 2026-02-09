@@ -1,0 +1,143 @@
+Γ£ù Build failed in 4.19s
+app/routes/app.vastu.jsx (19:9): "ResourcePicker" is not exported by "node_modules/@shopify/app-bridge-react/build/esm/index.js", imported by "app/routes/app.vastu.jsx".
+file: C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.vastu.jsx:19:9
+
+17: } from "@shopify/polaris";
+18: import { authenticate } from "../shopify.server";
+19: import { ResourcePicker } from "@shopify/app-bridge-react";
+             ^
+20: 
+21: // --- LOADER ---
+
+    at getRollupError (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:17037:16)
+    at Module.traceVariable (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:17449:29)
+    at ModuleScope.findVariable (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:15067:39)
+    at ChildScope.findVariable (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionScope.findVariable (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionBodyScope.findVariable (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at Identifier.bind (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:5447:40)
+    at CallExpression.bind (file:///C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/rollup/dist/es/shared/node-entry.js:2825:28) {
+  binding: 'ResourcePicker',
+  code: 'MISSING_EXPORT',
+  exporter: 'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/app-bridge-react/build/esm/index.js',
+  id: 'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.vastu.jsx',
+  url: 'https://rollupjs.org/troubleshooting/#error-name-is-not-exported-by-module',
+  pos: 424,
+  loc: {
+    column: 9,
+    file: 'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.vastu.jsx',
+    line: 19
+  },
+  frame: '17: } from "@shopify/polaris";\r\n' +
+    '18: import { authenticate } from "../shopify.server";\r\n' +
+    '19: import { ResourcePicker } from "@shopify/app-bridge-react";\r\n' +
+    '             ^\n' +
+    '20: \r\n' +
+    '21: // --- LOADER ---\r',
+  watchFiles: [
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/webhooks.app.uninstalled.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/webhooks.app.scopes_update.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@react-router/dev/dist/config/defaults/entry.client.tsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/root.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/auth.login/route.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/_index/route.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/auth.$.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app._index.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.additional.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.vastu.jsx',
+    'C:\\Users\\Mustain\\.gemini\\antigravity\\playground\\ecliptic-meteorite\\art-assistant\\package.json',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-dom/client.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-router/dist/development/dom-export.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react/jsx-runtime.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react/cjs/react-jsx-runtime.production.min.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react/cjs/react.production.min.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-dom/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-router/dist/development/chunk-4LKRSAEJ.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-router/dist/development/chunk-JZWAC4HX.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-dom/cjs/react-dom.production.min.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-router/dist/development/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/server/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/react/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/locales/en.json',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/_index/styles.module.css',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/styles.css',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/app-bridge-react/build/esm/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/react-router/node_modules/cookie/dist/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/set-cookie-parser/lib/set-cookie.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/scheduler/index.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/server/types.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/server/shopify-app.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/server/errors.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/server/boundary/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-api/dist/esm/runtime/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-api/dist/esm/adapters/web-api/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-api/dist/esm/lib/index.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/react/components/AppProvider/AppProvider.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/react/components/AppProxyProvider/AppProxyProvider.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/shopify-app-react-router/dist/esm/react/components/AppProxyLink/AppProxyLink.mjs',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ThemeProvider/ThemeProvider.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/configure.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/shared.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/types.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/color-transformers.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/within-content-context.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-copy-to-clipboard.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-event-listener.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-hover.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-media-query.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-theme.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/use-index-resource-state.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/utilities/breakpoints.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/AccountConnection/AccountConnection.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ActionMenu/ActionMenu.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/AppProvider/AppProvider.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ActionList/ActionList.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Autocomplete/Autocomplete.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Avatar/Avatar.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Backdrop/Backdrop.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Badge/Badge.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Banner/Banner.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Badge/types.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Box/Box.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Breadcrumbs/Breadcrumbs.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/BulkActions/BulkActions.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Bleed/Bleed.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Button/Button.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/CalloutCard/CalloutCard.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Button/utils.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ButtonGroup/ButtonGroup.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Checkbox/Checkbox.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Card/Card.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ChoiceList/ChoiceList.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Collapsible/Collapsible.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ColorPicker/ColorPicker.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/InlineGrid/InlineGrid.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Combobox/Combobox.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Connected/Connected.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ContextualSaveBar/ContextualSaveBar.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/DataTable/DataTable.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/DatePicker/DatePicker.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/DescriptionList/DescriptionList.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/DropZone/DropZone.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Divider/Divider.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/EmptySearchResult/EmptySearchResult.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/ExceptionList/ExceptionList.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/EmptyState/EmptyState.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Filters/Filters.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/EventListener/EventListener.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Focus/Focus.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/FooterHelp/FooterHelp.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Form/Form.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/FormLayout/FormLayout.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Frame/Frame.js',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@shopify/polaris/build/esm/components/Frame/components/Toast/Toast.js',
+    ... 1259 more items
+  ],
+  [Symbol(augmented)]: true
+}
