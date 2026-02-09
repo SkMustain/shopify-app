@@ -47,6 +47,8 @@ export const action = async ({ request }) => {
     let analysisLog = ""; // For DB logging
     let replyPrefix = ""; // To prepend to the carousel intro
     let desiredFormat = ""; // 'painting', 'poster', or ''
+    let isVastuStrict = false; // FLAG: Strict Vastu Search
+    let vastuDirection = ""; // Store direction for error message
 
     // 1. VISUAL SEARCH (EXPERT MODE)
     if (userImage) {
@@ -234,15 +236,16 @@ export const action = async ({ request }) => {
       if (direction) {
         const conf = getConfig(direction);
         designCritique = `For **${direction}**-facing walls, I recommend: ${conf.recommendation || "specific colors"}.`;
-        
-        // **PRIORITY SEARCH**: Look for tagged products first
+
+        // **STRICT SEARCH**: Look for tagged products ONLY
         // If the user tagged products with "Vastu-North", we want those to show up 100%.
-        const tagQuery = `tag:Vastu-${direction}`; 
-        const keywordQuery = conf.keywords || "art";
-        
-        // We will combine them in the search loop below, but prioritize the tag
-        searchQueries = [tagQuery, keywordQuery]; 
-        
+        const tagQuery = `tag:Vastu-${direction}`;
+
+        // STRICT: Only use the tag query. No keywords.
+        searchQueries = [tagQuery];
+        isVastuStrict = true;
+        vastuDirection = direction;
+
         userContext = `User wants Vastu compliant art for ${direction} wall.`;
         shouldSearch = true;
       } else {
@@ -250,10 +253,10 @@ export const action = async ({ request }) => {
           reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
           type: "actions",
           data: [
-             { label: "North (Wealth)", payload: "Vastu North" },
-             { label: "South (Fame)", payload: "Vastu South" },
-             { label: "East (Health)", payload: "Vastu East" },
-             { label: "West (Stability)", payload: "Vastu West" }
+            { label: "North (Wealth)", payload: "Vastu North" },
+            { label: "South (Fame)", payload: "Vastu South" },
+            { label: "East (Health)", payload: "Vastu East" },
+            { label: "West (Stability)", payload: "Vastu West" }
           ]
         }, { headers: cors?.headers || {} });
       }
@@ -432,8 +435,8 @@ export const action = async ({ request }) => {
       let candidates = Array.from(candidateMap.values());
       console.log(`Initial Candidates: ${candidates.length}`);
 
-      // ZERO RESULT POLICY
-      if (candidates.length < 5) {
+      // ZERO RESULT POLICY (Skip for Vastu Strict)
+      if (candidates.length < 5 && !isVastuStrict) {
         console.log("Pool too small. triggering Fallback 'Art' search.");
         const fallback = await fetchProducts("Art");
         fallback.forEach(edge => {
@@ -452,7 +455,7 @@ export const action = async ({ request }) => {
       // Logic: If the query included a 'tag:', we trust those results more. 
       // Checking if our primary query was a tag query
       const isTagSearch = searchQueries.some(q => q.startsWith("tag:"));
-      
+
       if (useAiCuration && candidates.length > 0 && !isTagSearch) {
         try {
           // Pass metadata to AI
@@ -534,9 +537,15 @@ export const action = async ({ request }) => {
           data: carouselData
         };
       } else {
-        responseData = {
-          reply: "I looked through the entire collection, but it seems empty! Please add some products to Shopify."
-        };
+        if (isVastuStrict) {
+          responseData = {
+            reply: `I haven't found any Vastu-compliant art for **${vastuDirection}** yet. Please check back later!`
+          };
+        } else {
+          responseData = {
+            reply: "I looked through the entire collection, but it seems empty! Please add some products to Shopify."
+          };
+        }
       }
     }
 
