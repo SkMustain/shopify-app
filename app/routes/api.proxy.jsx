@@ -40,7 +40,7 @@ export const action = async ({ request }) => {
     let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
     let shouldSearch = false; // Flag to determine if we run the GQL query
 
-    // Core Signals for Expert Analysis
+    // Core signals
     let searchQueries = []; // Array of broad queries
     let designCritique = ""; // Expert analysis text
     let userContext = ""; // For curation prompt
@@ -396,30 +396,37 @@ export const action = async ({ request }) => {
 
       // 2. ROBUST POOLING (Fetch Tags/Type)
       const fetchProducts = async (q) => {
-        const response = await admin.graphql(
-          `#graphql
-              query ($query: String!) {
-                products(first: 50, query: $query) {
-                  edges {
-                    node {
-                      id
-                      title
-                      handle
-                      description(truncateAt: 100)
-                      productType
-                      vendor
-                      tags
-                      variants(first: 1) { edges { node { id } } }
-                      priceRangeV2 { minVariantPrice { amount currencyCode } }
-                      featuredImage { url }
+        try {
+          const response = await admin.graphql(
+            `#graphql
+                query ($query: String!) {
+                  products(first: 50, query: $query) {
+                    edges {
+                      node {
+                        id
+                        title
+                        handle
+                        description(truncateAt: 100)
+                        productType
+                        vendor
+                        tags
+                        variants(first: 1) { edges { node { id } } }
+                        priceRangeV2 { minVariantPrice { amount currencyCode } }
+                        featuredImage { url }
+                      }
                     }
                   }
-                }
-              }`,
-          { variables: { query: `${q} status:active` } }
-        );
-        const json = await response.json();
-        return json.data?.products?.edges || [];
+                }`,
+            { variables: { query: `${q} status:active` } }
+          );
+          const json = await response.json();
+          const edges = json.data?.products?.edges || [];
+          console.log(`Query [${q}] found ${edges.length} products (Raw)`); // DEBUG LOG
+          return edges;
+        } catch (err) {
+          console.error(`Fetch Error for query [${q}]:`, err);
+          return [];
+        }
       };
 
       // Execute search - results will be naturally ordered by the query order in searchQueries
@@ -433,7 +440,7 @@ export const action = async ({ request }) => {
         }
       });
       let candidates = Array.from(candidateMap.values());
-      console.log(`Initial Candidates: ${candidates.length}`);
+      console.log(`Initial Candidates (Unique): ${candidates.length}`); // DEBUG LOG
 
       // ZERO RESULT POLICY (Skip for Vastu Strict)
       if (candidates.length < 5 && !isVastuStrict) {
@@ -508,6 +515,8 @@ export const action = async ({ request }) => {
         finalProducts = candidates.slice(0, 15);
       }
 
+      console.log(`Final Products Count: ${finalProducts.length}`); // DEBUG LOG
+
       // 4. RESPONSE
       if (finalProducts.length > 0) {
         let intro = "";
@@ -524,7 +533,7 @@ export const action = async ({ request }) => {
 
         const carouselData = finalProducts.map(node => ({
           title: node.title,
-          price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
+          price: node.priceRangeV2?.minVariantPrice ? `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}` : "Price N/A",
           image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
           url: `/products/${node.handle}`,
           variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "", // Extract ID
