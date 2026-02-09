@@ -143,7 +143,7 @@ export const action = async ({ request }) => {
     }
 
     // 2. GUIDED SEARCH FLOW (WIZARD)
-    else if (userMessage.includes("help") || userMessage.includes("choose") || userMessage.startsWith("flow_")) {
+    else if (userMessage.includes("help") || userMessage.includes("choose") || userMessage.startsWith("flow_") || userMessage === "vastu_intro") {
 
       // STEP 1: TRIGGER (or restart)
       if (userMessage.includes("help") || userMessage.includes("choose")) {
@@ -153,8 +153,21 @@ export const action = async ({ request }) => {
           data: [
             { label: "Living Room", payload: "flow_room:Living Room" },
             { label: "Bedroom", payload: "flow_room:Bedroom" },
-            { label: "Office", payload: "flow_room:Office" },
-            { label: "Dining Room", payload: "flow_room:Dining Room" }
+            { label: "Vastu Consultant", payload: "vastu_intro" }
+          ]
+        }, { headers: cors?.headers || {} });
+      }
+
+      // VASTU INTRO
+      else if (userMessage === "vastu_intro") {
+        return Response.json({
+          reply: "Vastu Shastra balances your home's energy. \n\n**Quick Tips:**\n🌊 **North:** Water (Wealth)\n🔥 **South:** Fire/Horses (Fame)\n🌿 **East:** Nature (Health)\n🏔️ **West:** Mountains (Stability)\n\nWhich wall are you decorating?",
+          type: "actions",
+          data: [
+            { label: "North (Wealth)", payload: "Vastu North" },
+            { label: "South (Fame)", payload: "Vastu South" },
+            { label: "East (Health)", payload: "Vastu East" },
+            { label: "West (Stability)", payload: "Vastu West" }
           ]
         }, { headers: cors?.headers || {} });
       }
@@ -209,25 +222,39 @@ export const action = async ({ request }) => {
       }
     }
 
-    // 3. VASTU LOGIC
+    // 3. VASTU LOGIC (SEARCH)
     else if (userMessage.includes("vastu")) {
       // ... (Vastu logic)
       let direction = "";
-      if (userMessage.includes("north") || userMessage.includes("east")) direction = "North";
+      if (userMessage.includes("north")) direction = "North";
+      else if (userMessage.includes("east")) direction = "East";
       else if (userMessage.includes("south")) direction = "South";
       else if (userMessage.includes("west")) direction = "West";
 
       if (direction) {
         const conf = getConfig(direction);
-        designCritique = `For ${direction}-facing walls, Vastu recommends ${conf.recommendation || "specific colors"}.`;
-        searchQueries = (conf.keywords || "art").split(" ");
+        designCritique = `For **${direction}**-facing walls, I recommend: ${conf.recommendation || "specific colors"}.`;
+        
+        // **PRIORITY SEARCH**: Look for tagged products first
+        // If the user tagged products with "Vastu-North", we want those to show up 100%.
+        const tagQuery = `tag:Vastu-${direction}`; 
+        const keywordQuery = conf.keywords || "art";
+        
+        // We will combine them in the search loop below, but prioritize the tag
+        searchQueries = [tagQuery, keywordQuery]; 
+        
         userContext = `User wants Vastu compliant art for ${direction} wall.`;
         shouldSearch = true;
       } else {
         return Response.json({
           reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
           type: "actions",
-          data: [{ label: "North/East", payload: "Vastu North" }, { label: "South", payload: "Vastu South" }]
+          data: [
+             { label: "North (Wealth)", payload: "Vastu North" },
+             { label: "South (Fame)", payload: "Vastu South" },
+             { label: "East (Health)", payload: "Vastu East" },
+             { label: "West (Stability)", payload: "Vastu West" }
+          ]
         }, { headers: cors?.headers || {} });
       }
     }
@@ -321,12 +348,13 @@ export const action = async ({ request }) => {
       let genAI;
       let useAiCuration = false;
 
-      if (apiKeySetting && apiKeySetting.value) {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        useAiCuration = true;
+      // Only generate queries if searchQueries is empty (i.e., not already set by Vastu logic)
+      if (searchQueries.length === 0) {
+        if (apiKeySetting && apiKeySetting.value) {
+          const { GoogleGenerativeAI } = await import("@google/generative-ai");
+          genAI = new GoogleGenerativeAI(apiKeySetting.value);
+          useAiCuration = true;
 
-        if (searchQueries.length === 0) {
           try {
             const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
 
@@ -391,6 +419,8 @@ export const action = async ({ request }) => {
         return json.data?.products?.edges || [];
       };
 
+      // Execute search - results will be naturally ordered by the query order in searchQueries
+      // Because we put tag:Vastu-... first, those results come first in the array.
       const results = await Promise.all(searchQueries.map(q => fetchProducts(q)));
 
       const candidateMap = new Map();
@@ -418,7 +448,12 @@ export const action = async ({ request }) => {
       let finalProducts = [];
       let expertAdvice = "";
 
-      if (useAiCuration && candidates.length > 0) {
+      // IF we have specific tagged Vastu results, we might want to skip AI Curation to strictly show what user selected?
+      // Logic: If the query included a 'tag:', we trust those results more. 
+      // Checking if our primary query was a tag query
+      const isTagSearch = searchQueries.some(q => q.startsWith("tag:"));
+      
+      if (useAiCuration && candidates.length > 0 && !isTagSearch) {
         try {
           // Pass metadata to AI
           const pool = candidates.slice(0, 50).map(p => ({
@@ -466,6 +501,7 @@ export const action = async ({ request }) => {
           finalProducts = candidates.slice(0, 5);
         }
       } else {
+        // For Vastu (Tag Search) or no AI, just take the top 5 (which will be the tagged ones first)
         finalProducts = candidates.slice(0, 5);
       }
 
