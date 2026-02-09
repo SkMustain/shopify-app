@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useLoaderData, useSubmit, useActionData, useNavigation } from "react-router";
+import { useState } from "react";
+import { useLoaderData, useSubmit, useNavigation } from "react-router";
 import {
     Page,
     Layout,
@@ -9,21 +9,17 @@ import {
     Text,
     Button,
     Thumbnail,
-    Banner,
-    Listbox,
     EmptyState,
     Box,
     Badge,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
-import { ResourcePicker } from "@shopify/app-bridge-react";
 
 // --- LOADER ---
 export const loader = async ({ request }) => {
     const { admin } = await authenticate.admin(request);
 
     // Fetch products that have ANY Vastu tag
-    // We search for "tag:Vastu-North OR tag:Vastu-South ..." but flexible
     const response = await admin.graphql(
         `#graphql
       query {
@@ -57,14 +53,6 @@ export const action = async ({ request }) => {
     const productIds = JSON.parse(formData.get("productIds")); // ["gid://shopify/Product/123", ...]
 
     if (!productIds.length) return { status: "success" };
-
-    console.log(`Action: ${actionType} tag ${tag} for products`, productIds);
-
-    // We must update tags for EACH product.
-    // Ideally use bulk mutation, but loop is fine for small scale UI.
-
-    // 1. Fetch current tags for these products first (to append/remove safely)
-    // OPTIMIZATION: We simply use 'tagsAdd' or 'tagsRemove' mutation usually.
 
     const mutation = actionType === "add"
         ? `#graphql
@@ -102,9 +90,6 @@ export default function VastuDashboard() {
     const nav = useNavigation();
     const isLoading = nav.state === "submitting";
 
-    const [pickerOpen, setPickerOpen] = useState(false);
-    const [currentDirection, setCurrentDirection] = useState("North"); // North, South, East, West
-
     const directions = [
         { name: "North", color: "info", desc: "Water / Wealth / Career" },
         { name: "South", color: "critical", desc: "Fire / Fame / Success" },
@@ -117,20 +102,21 @@ export default function VastuDashboard() {
         return products.filter(p => p.tags.includes(`Vastu-${dir}`));
     };
 
-    const handleOpenPicker = (dir) => {
-        setCurrentDirection(dir);
-        setPickerOpen(true);
-    };
+    const handleOpenPicker = async (dir) => {
+        // Use window.shopify.resourcePicker
+        const selected = await window.shopify.resourcePicker({
+            type: 'product',
+            multiple: true,
+            action: 'select'
+        });
 
-    const handleSelection = (resources) => {
-        setPickerOpen(false);
-        const ids = resources.selection.map(r => r.id);
-
-        // Submit Action
-        submit(
-            { actionType: "add", tag: `Vastu-${currentDirection}`, productIds: JSON.stringify(ids) },
-            { method: "post" }
-        );
+        if (selected) {
+            const ids = selected.map(r => r.id);
+            submit(
+                { actionType: "add", tag: `Vastu-${dir}`, productIds: JSON.stringify(ids) },
+                { method: "post" }
+            );
+        }
     };
 
     const handleRemove = (productId, dir) => {
@@ -143,16 +129,6 @@ export default function VastuDashboard() {
     return (
         <Page title="Vastu Consultant Dashboard" subtitle="Manage artwork recommendations for each direction">
             <Layout>
-
-                {/* RESOURCE PICKER */}
-                <ResourcePicker
-                    resourceType="Product"
-                    open={pickerOpen}
-                    onSelection={handleSelection}
-                    onCancel={() => setPickerOpen(false)}
-                    showVariants={false}
-                />
-
                 <Layout.Section>
                     <BlockStack gap="500">
                         {directions.map((dir) => {
