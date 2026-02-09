@@ -152,26 +152,7 @@ export default function Index() {
           </Card>
         </Layout.Section>
 
-        {/* CONFIG PORTAL */}
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text as="h2" variant="headingMd">AI Training Portal (Vastu Logic)</Text>
-              <InlineGrid columns={["oneThird", "twoThirds"]} gap="400">
-                <BlockStack gap="200">
-                  <Button onClick={() => handleDirChange("North")} variant={selectedDir === "North" ? "primary" : "secondary"}>North / East</Button>
-                  <Button onClick={() => handleDirChange("South")} variant={selectedDir === "South" ? "primary" : "secondary"}>South</Button>
-                  <Button onClick={() => handleDirChange("West")} variant={selectedDir === "West" ? "primary" : "secondary"}>West / SW</Button>
-                </BlockStack>
-                <BlockStack gap="400">
-                  <TextField label="AI Recommendation Text" value={rec} onChange={setRec} helpText="What the bot says to the customer." autoComplete="off" />
-                  <TextField label="Search Keywords" value={keys} onChange={setKeys} helpText="Keywords passed to Shopify Search." autoComplete="off" />
-                  <Button onClick={saveConfig} loading={fetcher.state === "submitting"}>Save Rule</Button>
-                </BlockStack>
-              </InlineGrid>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
+
       </Layout>
     </Page>
   );

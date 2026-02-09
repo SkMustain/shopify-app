@@ -153,9 +153,9 @@ export const action = async ({ request }) => {
           reply: "I'd love to help you find the perfect piece! First, which room are you decorating?",
           type: "actions",
           data: [
+            { label: "Vastu Consultant", payload: "vastu_intro" },
             { label: "Living Room", payload: "flow_room:Living Room" },
-            { label: "Bedroom", payload: "flow_room:Bedroom" },
-            { label: "Vastu Consultant", payload: "vastu_intro" }
+            { label: "Bedroom", payload: "flow_room:Bedroom" }
           ]
         }, { headers: cors?.headers || {} });
       }
@@ -417,7 +417,7 @@ export const action = async ({ request }) => {
                     }
                   }
                 }`,
-            { variables: { query: `${q} status:active` } }
+            { variables: { query: q } }
           );
           const json = await response.json();
           const edges = json.data?.products?.edges || [];
