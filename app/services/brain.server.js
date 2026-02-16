@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export const AntigravityBrain = {
 
     async process(text, history = [], admin, apiKey) {
-        console.log("🧠 AntigravityBrain v3.3 (Force Deploy) Processing...");
+        console.log("🧠 AntigravityBrain v4.0 (Data-Aware) Processing...");
         if (!apiKey) {
             return {
                 reply: "I'm currently offline (API Key missing). But I can still search for you!",
@@ -14,7 +14,11 @@ export const AntigravityBrain = {
 
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // --- 1. DEFINE TOOLS ---
+        // --- 1. FETCH STORE CONTEXT (Real-time) ---
+        // Fetch collections and types to give the AI "Ground Truth" about what is actually sold.
+        const storeContext = await this.fetchStoreContext(admin);
+
+        // --- 2. DEFINE TOOLS ---
         const tools = [
             {
                 functionDeclarations: [
@@ -46,35 +50,44 @@ export const AntigravityBrain = {
             }
         ];
 
-        // --- 2. SYSTEM PROMPT ---
+        // --- 3. SYSTEM PROMPT (High Quality & Empathetic) ---
+        const systemPrompt = `You are the "Art Assistant", a highly intelligent, empathetic, and aesthetic interior design consultant.
+        
+        YOUR GOAL: deeply understand what the customer wants and guide them to the perfect art piece.
+        
+        STORE KNOWLEDGE (Ground Truth):
+        - Available Collections: ${storeContext.collections}
+        - Product Types: ${storeContext.types}
+        - We specialize in: Premium Canvas, Vastu Art, and Modern Decor.
+        - Free Shipping in India.
+
+        BEHAVIOR GUIDELINES:
+        1. **ACTIVE LISTENING (Critical)**:
+           - Before making a recommendation, acknowledge what the user said.
+           - Example: "I understand you're looking for something widely peaceful for your bedroom. That sounds lovely."
+           - If the user is vague ("I need art"), ASK CLARIFYING QUESTIONS politely ("What kind of vibe are you aiming for? Modern, Traditional, or maybe something Spiritual?").
+
+        2. **CONSULTANT MODE**:
+           - Don't just be a search engine. Be a *guide*.
+           - Use the 'search_products' tool ONLY when you have specific preferences (Room, Color, Theme, or Budget).
+           - If the user shares a personal story ("It's for my new house"), celebrate with them! ("Congratulations on your new home! 🏡 Let's make it beautiful.")
+
+        3. **VASTU EXPERT**: 
+           - If the user mentions a direction (North, South, East, West), IMMEDIATELY call 'get_vastu_advice'.
+           - Explain *why* a certain art is good for that direction.
+
+        4. **TONE**:
+           - Warm, Professional, Artistic.
+           - Use emojis sparingly but effectively (✨, 🎨, 🌿).
+        `;
+
         const model = genAI.getGenerativeModel({
             model: "gemini-2.0-flash",
             tools: tools,
-            systemInstruction: `You are the "Art Assistant", a highly intelligent and aesthetic interior design consultant.
-        
-        YOUR GOAL: Help the user find the *perfect* painting for their space.
-
-        BEHAVIOR GUIDELINES:
-        1. **CONSULTANT MODE**:
-           - If the user says "I want a painting" or "Show me art", DO NOT SEARCH YET.
-           - ASK CLARIFYING QUESTIONS: "Which room is this for?" "Do you have a color theme?" "What is your budget?"
-           - ONLY call 'search_products' when you have at least ONE specific criteria (Room, Color, Theme, or Vastu direction).
-        
-        2. **VASTU EXPERT**: 
-           - If the user mentions a direction (North, South, East, West), IMMEDIATELY call 'get_vastu_advice'.
-           - Explain the rule briefly, THEN search for art that matches that rule.
-
-        3. **TONE**:
-           - Use emojis (✨, 🎨, 🏡).
-           - Be concise but warm.
-           - If search results are empty, suggesting a broader term or a custom order.
-        
-        STORE INFO:
-        - Premium Canvas Art, Spiritual, Abstract, Landscape.
-        - Free Shipping in India.`
+            systemInstruction: systemPrompt
         });
 
-        // --- 3. RUN CHAT ---
+        // --- 4. RUN CHAT ---
         try {
             // Map simple history format if needed (User/Model)
             // For now, we start fresh or use minimal context provided in 'history' arg
@@ -88,7 +101,7 @@ export const AntigravityBrain = {
             const result = await chat.sendMessage(text);
             const response = result.response;
 
-            // --- 4. HANDLE FUNCTION CALLS ---
+            // --- 5. HANDLE FUNCTION CALLS ---
             const call = response.functionCalls()?.[0];
 
             if (call) {
@@ -100,7 +113,7 @@ export const AntigravityBrain = {
                     // Return Structured Action for Frontend to Render Carousel
                     if (products.length > 0) {
                         return {
-                            reply: `Here are some matches for **${query}**! ✨`,
+                            reply: `Here are some beautiful matches for **${query}** that I think you'll love! ✨`,
                             action: {
                                 type: "carousel",
                                 data: products
@@ -108,20 +121,16 @@ export const AntigravityBrain = {
                             intent: "product_search"
                         };
                     } else {
-                        return { reply: `I couldn't find any exact matches for "${query}". Try a broader term?`, intent: "chat" };
+                        return { reply: `I looked for "${query}", but I couldn't find an exact match in our current collection. Could we try a broader theme like "Abstract" or "Nature"?`, intent: "chat" };
                     }
                 }
 
                 if (call.name === "get_vastu_advice") {
                     const advice = await this.executeVastuQuery(admin, call.args.direction);
-                    // Send advice back to model to formulate final answer? 
-                    // Or just return it. 
-                    // For simplicity/speed in V1: Return text directly + Search for that direction
-
                     const followUpSearch = await this.executeShopifySearch(admin, `Vastu ${call.args.direction} ${advice.keywords || ''}`);
 
                     return {
-                        reply: `**Vastu Tip for ${call.args.direction}:** ${advice.recommendation}\n\nI've found some art that matches this energy! 👇`,
+                        reply: `**Vastu Insight for ${call.args.direction}:** ${advice.recommendation}\n\nBased on this, I've selected these auspicious pieces for you: 👇`,
                         action: {
                             type: "carousel",
                             data: followUpSearch
@@ -144,6 +153,25 @@ export const AntigravityBrain = {
     },
 
     // --- HELPERS ---
+
+    async fetchStoreContext(admin) {
+        try {
+            const response = await admin.graphql(
+                `#graphql
+                query {
+                    collections(first: 10) { edges { node { title } } }
+                    productTypes(first: 10) { edges { node } }
+                }`
+            );
+            const json = await response.json();
+            const collections = json.data?.collections?.edges.map(e => e.node.title).join(", ") || "Art, Canvas, Decor";
+            const types = json.data?.productTypes?.edges.map(e => e.node).join(", ") || "Painting, Print";
+            return { collections, types };
+        } catch (e) {
+            console.error("Context Fetch Error:", e);
+            return { collections: "General Art", types: "Canvas" };
+        }
+    },
 
     async executeShopifySearch(admin, query, maxPrice, color) {
         // Construct Query
