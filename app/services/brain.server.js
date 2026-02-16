@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export const AntigravityBrain = {
 
     async process(text, history = [], admin, apiKey) {
-        console.log("🧠 AntigravityBrain v2.4 (Gemini Pro) Processing...");
+        console.log("🧠 AntigravityBrain v3.0 (Gemini 2.0 Flash) Processing...");
         if (!apiKey) {
             return {
                 reply: "I'm currently offline (API Key missing). But I can still search for you!",
@@ -48,7 +48,7 @@ export const AntigravityBrain = {
 
         // --- 2. SYSTEM PROMPT ---
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-pro",
+            model: "gemini-2.0-flash",
             tools: tools,
             systemInstruction: `You are the "Art Assistant", a highly intelligent and aesthetic interior design consultant.
         
