@@ -73,28 +73,32 @@ export const AntigravityBrain = {
             } catch (e2) {
                 console.error("❌ ALL AI Models Failed. Switching to DUMB SEARCH.", e2);
 
-                // --- ULTIMATE FALLBACK: DUMB SEARCH ---
-                // If AI is dead, just search Shopify with the user's raw text.
-                let products = await this.executeShopifySearch(admin, text);
+                try {
+                    // --- ULTIMATE FALLBACK: DUMB SEARCH ---
+                    // If AI is dead, just search Shopify with the user's raw text.
+                    let products = await this.executeShopifySearch(admin, text);
 
-                // IF DUMB SEARCH FAILS -> SHOW BEST SELLERS (Total Safety Net)
-                if (products.length === 0) {
-                    products = await this.executeShopifySearch(admin, ""); // Empty query = All/Top products
+                    // IF DUMB SEARCH FAILS -> SHOW BEST SELLERS (Total Safety Net)
+                    if (products.length === 0) {
+                        products = await this.executeShopifySearch(admin, ""); // Empty query = All/Top products
+                    }
+
+                    if (products.length > 0) {
+                        return {
+                            reply: "My AI connection is weak right now, but here are some of our featured artworks for you to explore! 🎨",
+                            action: { type: "carousel", data: products },
+                            intent: "product_search"
+                        };
+                    }
+                } catch (e3) {
+                    console.error("❌ CRITICAL: Dumb Search & Fallback Failed:", e3);
                 }
 
-                if (products.length > 0) {
-                    return {
-                        reply: "My AI connection is weak right now, but here are some of our featured artworks for you to explore! 🎨",
-                        action: { type: "carousel", data: products },
-                        intent: "product_search"
-                    };
-                } else {
-                    // Only hits if store is completely empty
-                    return {
-                        reply: "I'm currently unable to access the catalog. Please try refreshing the page later.",
-                        intent: "error"
-                    };
-                }
+                // If even the fallback fails (e.g. Shopify API down), return a safe text response.
+                return {
+                    reply: "I'm currently unable to access the catalog. Please browse our collections directly via the menu.",
+                    intent: "error"
+                };
             }
         }
     },
