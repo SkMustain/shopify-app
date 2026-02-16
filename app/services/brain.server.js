@@ -75,17 +75,23 @@ export const AntigravityBrain = {
 
                 // --- ULTIMATE FALLBACK: DUMB SEARCH ---
                 // If AI is dead, just search Shopify with the user's raw text.
-                const products = await this.executeShopifySearch(admin, text);
+                let products = await this.executeShopifySearch(admin, text);
+
+                // IF DUMB SEARCH FAILS -> SHOW BEST SELLERS (Total Safety Net)
+                if (products.length === 0) {
+                    products = await this.executeShopifySearch(admin, ""); // Empty query = All/Top products
+                }
 
                 if (products.length > 0) {
                     return {
-                        reply: "My AI brain is a bit tired (High Traffic), but I found these products for you based on keywords! ⚡",
+                        reply: "My AI connection is weak right now, but here are some of our featured artworks for you to explore! 🎨",
                         action: { type: "carousel", data: products },
                         intent: "product_search"
                     };
                 } else {
+                    // Only hits if store is completely empty
                     return {
-                        reply: `I'm having trouble connecting to my brain right now, and I couldn't find exact keyword matches for "${text}". Try browsing our collections?`,
+                        reply: "I'm currently unable to access the catalog. Please try refreshing the page later.",
                         intent: "error"
                     };
                 }
