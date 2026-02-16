@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export const AntigravityBrain = {
 
     async process(text, history = [], admin, apiKey) {
-        console.log("🧠 AntigravityBrain v3.0 (Gemini 2.0 Flash) Processing...");
+        console.log("🧠 AntigravityBrain v3.1 (Gemini 2.0 Flash) Force Redeploy...");
         if (!apiKey) {
             return {
                 reply: "I'm currently offline (API Key missing). But I can still search for you!",
