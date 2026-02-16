@@ -65,14 +65,30 @@ export const AntigravityBrain = {
         try {
             return await this.runTrace(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
-            console.warn("⚠️ Gemini 2.0 Failed (Quota/Error). Switching to Fallback...", e.message);
+            console.warn("⚠️ Gemini 2.0 Failed. Switching to Fallback...", e.message);
 
             // --- ATTEMPT 2: GEMINI 1.5 FLASH (Reliable Fallback) ---
             try {
                 return await this.runTrace(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
             } catch (e2) {
-                console.error("❌ ALL Brain Models Failed:", e2);
-                return { reply: "I'm feeling a bit overwhelmed right now. 😵‍💫 Could you try searching for keywords directly?", intent: "error" };
+                console.error("❌ ALL AI Models Failed. Switching to DUMB SEARCH.", e2);
+
+                // --- ULTIMATE FALLBACK: DUMB SEARCH ---
+                // If AI is dead, just search Shopify with the user's raw text.
+                const products = await this.executeShopifySearch(admin, text);
+
+                if (products.length > 0) {
+                    return {
+                        reply: "My AI brain is a bit tired (High Traffic), but I found these products for you based on keywords! ⚡",
+                        action: { type: "carousel", data: products },
+                        intent: "product_search"
+                    };
+                } else {
+                    return {
+                        reply: `I'm having trouble connecting to my brain right now, and I couldn't find exact keyword matches for "${text}". Try browsing our collections?`,
+                        intent: "error"
+                    };
+                }
             }
         }
     },
