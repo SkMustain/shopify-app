@@ -25,7 +25,7 @@ export const action = async ({ request }) => {
 
     // Import Prisma & Services
     const { default: prisma } = await import("../db.server");
-    const { AntigravityBrain } = await import("../services/antigravity.server");
+    const { AntigravityBrain } = await import("../services/brain.server");
 
     // --- STATE MACHINE HELPERS ---
     // We infer state from the 'payloadTag' or specific keywords
@@ -320,25 +320,37 @@ export const action = async ({ request }) => {
       } else {
         // Default "Brain" handling for random queries
         const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+        const apiKey = apiKeySetting?.value;
 
-        // 1. Run Local Brain Analysis (0ms Latency)
-        const brainAnalysis = AntigravityBrain.process(userMessage);
+        // 1. Run BIG BRAIN Analysis
+        let brainResult;
+        try {
+          brainResult = await AntigravityBrain.process(userMessage, [], admin, apiKey);
+        } catch (e) {
+          console.error("Brain Process Error", e);
+          brainResult = { reply: "I'm having trouble connecting to my brain. 🧠", intent: "error" };
+        }
 
-        if (brainAnalysis.intent === "chat" && brainAnalysis.confidence > 0.8) {
-          responseData = { reply: brainAnalysis.reply || "Hi! How can I help you decorate?" };
-          if (userMessage.toLowerCase().includes("hi") || userMessage.toLowerCase().includes("hello")) {
-            // Force menu
-            responseData.type = "actions";
-            responseData.data = [
-              { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
-              { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
-              { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
-            ];
-          }
+        if (brainResult.action && brainResult.action.type === "carousel") {
+          // Brain returned a structured action (like a Carousel from tool call)
+          responseData = {
+            reply: brainResult.reply,
+            type: "carousel",
+            data: brainResult.action.data
+          };
         } else {
-          // Fallback Search
-          responseData = await executeSearch(admin, userMessage, {});
-          responseData.reply = `Here are some results for "${userMessage}"`;
+          // Plain text response from Brain
+          responseData = { reply: brainResult.reply };
+        }
+
+        // Add menu if greeting detected (Brain says "chat" and confidence high or greeting words)
+        if (brainResult.intent === "chat" && (userMessage.toLowerCase().includes("hi") || userMessage.toLowerCase().includes("hello"))) {
+          responseData.type = "actions";
+          responseData.data = [
+            { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+            { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
+            { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
+          ];
         }
       }
     }

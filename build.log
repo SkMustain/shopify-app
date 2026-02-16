@@ -1,0 +1,86 @@
+
+> build
+> react-router build
+
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32mΓ£ô[39m 1 modules transformed.
+Γ£ù Build failed in 54ms
+[vite:esbuild] Transform failed with 2 errors:
+C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx?__react-router-build-client-route:139:18: ERROR: The symbol "_" has already been declared
+C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx?__react-router-build-client-route:153:18: ERROR: The symbol "_" has already been declared
+file: C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx?__react-router-build-client-route:139:18
+
+The symbol "_" has already been declared
+137|        // E. Budget Step
+138|        else if (step === "SET_THEME") {
+139|          const [_, _, color, theme, imgId] = payloadTag.split(":");
+   |                    ^
+140|          responseData = {
+141|            reply: "What is your budget range?",
+
+The symbol "_" has already been declared
+151|        // F. Final Response (Visual Flow)
+152|        else if (step === "FINAL") {
+153|          const [_, _, color, theme, budget, imgId] = payloadTag.split(":");
+   |                    ^
+154|  
+155|          // IF "Auto" color/theme, we rely on Gemini Vision here if we had the image content.
+
+    at failureErrorWithLog (C:\Users\Mustain\.gemini\antigravity\playground\ecliptic-meteorite\art-assistant\node_modules\esbuild\lib\main.js:1467:15)
+    at C:\Users\Mustain\.gemini\antigravity\playground\ecliptic-meteorite\art-assistant\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (C:\Users\Mustain\.gemini\antigravity\playground\ecliptic-meteorite\art-assistant\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (C:\Users\Mustain\.gemini\antigravity\playground\ecliptic-meteorite\art-assistant\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (C:\Users\Mustain\.gemini\antigravity\playground\ecliptic-meteorite\art-assistant\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Socket.Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23) {
+  errors: [Getter/Setter],
+  warnings: [Getter/Setter],
+  frame: '\n' +
+    '\x1B[33mThe symbol "_" has already been declared\x1B[39m\n' +
+    '137|        // E. Budget Step\n' +
+    '138|        else if (step === "SET_THEME") {\n' +
+    '139|          const [_, _, color, theme, imgId] = payloadTag.split(":");\n' +
+    '   |                    ^\n' +
+    '140|          responseData = {\n' +
+    '141|            reply: "What is your budget range?",\n' +
+    '\n' +
+    '\x1B[33mThe symbol "_" has already been declared\x1B[39m\n' +
+    '151|        // F. Final Response (Visual Flow)\n' +
+    '152|        else if (step === "FINAL") {\n' +
+    '153|          const [_, _, color, theme, budget, imgId] = payloadTag.split(":");\n' +
+    '   |                    ^\n' +
+    '154|  \n' +
+    '155|          // IF "Auto" color/theme, we rely on Gemini Vision here if we had the image content.\n',
+  loc: {
+    column: 18,
+    file: 'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx?__react-router-build-client-route',
+    length: 1,
+    line: 139,
+    lineText: '        const [_, _, color, theme, imgId] = payloadTag.split(":");',
+    namespace: '',
+    suggestion: ''
+  },
+  code: 'PLUGIN_ERROR',
+  plugin: 'vite:esbuild',
+  hook: 'transform',
+  id: 'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx?__react-router-build-client-route',
+  watchFiles: [
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/root.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/webhooks.app.scopes_update.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/webhooks.app.uninstalled.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/node_modules/@react-router/dev/dist/config/defaults/entry.client.tsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/api.proxy.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/auth.login/route.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/auth.$.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/_index/route.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.debug.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app._index.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.additional.jsx',
+    'C:/Users/Mustain/.gemini/antigravity/playground/ecliptic-meteorite/art-assistant/app/routes/app.vastu.jsx'
+  ]
+}
