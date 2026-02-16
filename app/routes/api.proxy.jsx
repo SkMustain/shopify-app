@@ -136,7 +136,7 @@ export const action = async ({ request }) => {
 
       // E. Budget Step
       else if (step === "SET_THEME") {
-        const [_, _, color, theme, imgId] = payloadTag.split(":");
+        const [, , color, theme, imgId] = payloadTag.split(":");
         responseData = {
           reply: "What is your budget range?",
           type: "actions",
@@ -150,7 +150,7 @@ export const action = async ({ request }) => {
 
       // F. Final Response (Visual Flow)
       else if (step === "FINAL") {
-        const [_, _, color, theme, budget, imgId] = payloadTag.split(":");
+        const [, , color, theme, budget, imgId] = payloadTag.split(":");
 
         // IF "Auto" color/theme, we rely on Gemini Vision here if we had the image content.
         // But we only have ID. 
