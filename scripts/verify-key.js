@@ -31,12 +31,17 @@ async function testModel(modelName) {
 }
 
 async function run() {
+    console.log("--- STANDARD MODELS ---");
     const flashWorking = await testModel("gemini-1.5-flash");
     const proWorking = await testModel("gemini-1.5-pro");
     const v2Working = await testModel("gemini-2.0-flash");
 
+    console.log("\n--- USER REQUESTED (Experimental/Future) ---");
+    const v25Flash = await testModel("gemini-2.5-flash");
+    const v25Pro = await testModel("gemini-2.5-pro");
+
     if (!flashWorking && !proWorking && !v2Working) {
-        console.error("\n❌ ALL MODELS FAILED. The API Key might be invalid, quota exceeded, or the API is down.");
+        console.error("\n❌ CRITICAL: Even standard models failed. The API Key is 100% invalid or billing is disabled.");
     } else {
         console.log("\n✨ At least one model is working!");
     }

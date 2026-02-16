@@ -7,7 +7,7 @@ export const AntigravityBrain = {
         // Ensure text is a string and not empty.
         const text = String(textInput || "").trim();
 
-        console.log(`🧠 AntigravityBrain v4.9 (Bulletproof) Processing: "${text.slice(0, 20)}..."`);
+        console.log(`🧠 AntigravityBrain v4.10 (Gemini 2.0 + 1.5 Fallback) Processing: "${text.slice(0, 20)}..."`);
 
         // --- 2. API KEY CHECK ---
         if (!apiKey) {
@@ -66,15 +66,15 @@ export const AntigravityBrain = {
         4. **TONE**: Warm, Professional, Artistic. Use emojis (✨, 🎨).
         `;
 
-        // --- ATTEMPT 1: GEMINI 1.5 FLASH (Speed & Stability) ---
+        // --- ATTEMPT 1: GEMINI 2.0 FLASH (User Choice - Experimental/Quotas) ---
         try {
-            return await this.runTraceWithRetry(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
+            return await this.runTraceWithRetry(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
-            console.warn("⚠️ Gemini 1.5 Flash Failed. Switching to Pro...", e.message);
+            console.warn("⚠️ Gemini 2.0 Flash Failed (Quota/Error). Switching to 1.5 Flash...", e.message);
 
-            // --- ATTEMPT 2: GEMINI 1.5 PRO (Higher Intelligence) ---
+            // --- ATTEMPT 2: GEMINI 1.5 FLASH (Reliable Backup) ---
             try {
-                return await this.runTraceWithRetry(genAI, "gemini-1.5-pro", systemPrompt, tools, history, text, admin);
+                return await this.runTraceWithRetry(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
             } catch (e2) {
                 console.error("❌ ALL AI Models Failed. Entering RESILIENT MODE.", e2);
                 // Fallback to local logic
