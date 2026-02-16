@@ -139,7 +139,7 @@ export const AntigravityBrain = {
 
         } catch (e) {
             console.error("Brain Error:", e);
-            return { reply: "I'm having a bit of trouble thinking clearly right now. 😵‍💫", intent: "error" };
+            return { reply: `DEBUG ERROR: ${e.message}\n${e.stack}`, intent: "error" };
         }
     },
 
