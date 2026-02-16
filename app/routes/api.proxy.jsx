@@ -320,7 +320,7 @@ export const action = async ({ request }) => {
       } else {
         // Default "Brain" handling for random queries
         const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
-        const apiKey = apiKeySetting?.value || process.env.GEMINI_API_KEY || "AIzaSyA3rEHJWmZ73V9VUUhlxlhXuV_VSlp1F_Y";
+        const apiKey = apiKeySetting?.value || process.env.GEMINI_API_KEY || "AIzaSyAtP79orpxHEbMLd8Ux-2W3rdLnOGgO-hY";
 
         // 1. Run BIG BRAIN Analysis
         let brainResult;
