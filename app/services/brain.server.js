@@ -61,49 +61,83 @@ export const AntigravityBrain = {
         4. **TONE**: Warm, Professional, Artistic. Use emojis (✨, 🎨).
         `;
 
-        // --- ATTEMPT 1: GEMINI 2.0 FLASH (High Quality) ---
+        // --- ATTEMPT 1: GEMINI 1.5 FLASH (Speed & Stability) ---
+        // We use 1.5-flash as primary because it's the current production standard for speed/cost.
         try {
-            return await this.runTrace(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
+            return await this.runTraceWithRetry(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
-            console.warn("⚠️ Gemini 2.0 Failed. Switching to Fallback...", e.message);
+            console.warn("⚠️ Gemini 1.5 Flash Failed. Switching to Pro...", e.message);
 
-            // --- ATTEMPT 2: GEMINI 1.5 FLASH (Reliable Fallback) ---
+            // --- ATTEMPT 2: GEMINI 1.5 PRO (Higher Intelligence) ---
+            // If Flash fails (e.g. overloaded), try Pro. It's slower but smarter.
             try {
-                return await this.runTrace(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
+                return await this.runTraceWithRetry(genAI, "gemini-1.5-pro", systemPrompt, tools, history, text, admin);
             } catch (e2) {
-                console.error("❌ ALL AI Models Failed. Switching to DUMB SEARCH.", e2);
+                console.error("❌ ALL AI Models Failed. Entering RESILIENT MODE.", e2);
 
                 try {
-                    // --- ULTIMATE FALLBACK: DUMB SEARCH ---
-                    // If AI is dead, just search Shopify with the user's raw text.
-                    let products = await this.executeShopifySearch(admin, text);
-
-                    // IF DUMB SEARCH FAILS -> SHOW BEST SELLERS (Total Safety Net)
-                    if (products.length === 0) {
-                        products = await this.executeShopifySearch(admin, ""); // Empty query = All/Top products
+                    // --- RESILIENT MODE (Pseudo-Intelligence) ---
+                    // 1. Check for Greetings
+                    if (text.match(/\b(hi|hello|hey|start|menu)\b/i)) {
+                        return {
+                            reply: "Hi there! 👋 I'm operating in Low-Data Mode due to high traffic, but I can still help! What are you looking for?",
+                            intent: "chat"
+                        };
                     }
+
+                    // 2. Extract Keywords (Simple Noun Extraction)
+                    // We strip common stop words to find the "core" search term
+                    const stopWords = ["i", "want", "looking", "for", "a", "an", "the", "some", "art", "painting", "can", "you", "show", "me", "pictures", "of"];
+                    const keywords = text.toLowerCase().split(" ").filter(w => !stopWords.includes(w)).join(" ");
+
+                    // 3. Execute Search with extracted keywords
+                    // If keywords are empty, search for "Best Sellers"
+                    const searchQuery = keywords.length > 2 ? keywords : "";
+
+                    let products = await this.executeShopifySearch(admin, searchQuery);
 
                     if (products.length > 0) {
                         return {
-                            reply: "My AI connection is weak right now, but here are some of our featured artworks for you to explore! 🎨",
+                            reply: searchQuery
+                                ? `I couldn't reach my creative brain, but I found these **${searchQuery}** artworks for you! 🎨`
+                                : "I'm having trouble thinking, but here are our **Most Popular** artworks! 🔥",
                             action: { type: "carousel", data: products },
                             intent: "product_search"
                         };
+                    } else {
+                        // 4. Zero Results -> Show Best Sellers
+                        const bestSellers = await this.executeShopifySearch(admin, "");
+                        return {
+                            reply: `I couldn't find anything for "${keywords}", but check out our customer favorites! 👇`,
+                            action: { type: "carousel", data: bestSellers },
+                            intent: "product_search"
+                        };
                     }
-                } catch (e3) {
-                    console.error("❌ CRITICAL: Dumb Search & Fallback Failed:", e3);
-                }
 
-                // If even the fallback fails (e.g. Shopify API down), return a safe text response.
-                return {
-                    reply: "I'm currently unable to access the catalog. Please browse our collections directly via the menu.",
-                    intent: "error"
-                };
+                } catch (e3) {
+                    console.error("❌ CRITICAL: Resilient Mode Failed:", e3);
+                    return {
+                        reply: "I'm having a technical hiccup. Please try clicking the 'Best Sellers' link in the menu above! 👆",
+                        intent: "error"
+                    };
+                }
             }
         }
     },
 
-    // --- SHARED EXECUTION LOGIC ---
+    // --- SHARED EXECUTION LOGIC WITH RETRY ---
+    async runTraceWithRetry(genAI, modelName, systemInstruction, tools, history, text, admin, retries = 2) {
+        for (let i = 0; i <= retries; i++) {
+            try {
+                return await this.runTrace(genAI, modelName, systemInstruction, tools, history, text, admin);
+            } catch (e) {
+                console.warn(`Attempt ${i + 1} failed for ${modelName}:`, e.message);
+                if (i === retries) throw e; // Throw only on last failure
+                await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff: 1s, 2s...
+            }
+        }
+    },
+
     async runTrace(genAI, modelName, systemInstruction, tools, history, text, admin) {
         console.log(`🤖 Attempting execution with model: ${modelName}`);
         const model = genAI.getGenerativeModel({ model: modelName, tools, systemInstruction });
@@ -161,10 +195,7 @@ export const AntigravityBrain = {
         let finalQuery = query;
         if (color && !query.includes(color)) finalQuery = `${query} ${color}`;
 
-        // Handle Empty Query -> "sort_key: BEST_SELLING" or just wildcard?
-        // Shopify 'products' query argument matches keywords. "" matches nothing usually.
-        // We need a different query for ALL products.
-
+        // Handle Empty Query -> "sort_key: BEST_SELLING"
         let graphqlQuery = "";
         let variables = {};
 
