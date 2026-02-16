@@ -2,17 +2,22 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const AntigravityBrain = {
 
-    async process(text, history = [], admin, apiKey) {
-        console.log("🧠 AntigravityBrain v4.8 (Stable Models & Retry) Processing...");
+    async process(textInput, history = [], admin, apiKey) {
+        // --- 1. DEFENSIVE INPUT HANDLING ---
+        // Ensure text is a string and not empty.
+        const text = String(textInput || "").trim();
+
+        console.log(`🧠 AntigravityBrain v4.9 (Bulletproof) Processing: "${text.slice(0, 20)}..."`);
+
+        // --- 2. API KEY CHECK ---
         if (!apiKey) {
-            return {
-                reply: "I'm currently offline (API Key missing). But I can still search for you!",
-                intent: "search_fallback",
-                confidence: 0
-            };
+            console.warn("⚠️ No API Key provided.");
+            return this.getResilientResponse(admin, text);
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
+
+        // Fetch context safely (never throws)
         const storeContext = await this.fetchStoreContext(admin);
 
         // --- DEFINE TOOLS & PROMPT ---
@@ -62,66 +67,76 @@ export const AntigravityBrain = {
         `;
 
         // --- ATTEMPT 1: GEMINI 1.5 FLASH (Speed & Stability) ---
-        // We use 1.5-flash as primary because it's the current production standard for speed/cost.
         try {
             return await this.runTraceWithRetry(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
             console.warn("⚠️ Gemini 1.5 Flash Failed. Switching to Pro...", e.message);
 
             // --- ATTEMPT 2: GEMINI 1.5 PRO (Higher Intelligence) ---
-            // If Flash fails (e.g. overloaded), try Pro. It's slower but smarter.
             try {
                 return await this.runTraceWithRetry(genAI, "gemini-1.5-pro", systemPrompt, tools, history, text, admin);
             } catch (e2) {
                 console.error("❌ ALL AI Models Failed. Entering RESILIENT MODE.", e2);
+                // Fallback to local logic
+                return await this.getResilientResponse(admin, text);
+            }
+        }
+    },
 
-                try {
-                    // --- RESILIENT MODE (Pseudo-Intelligence) ---
-                    // 1. Check for Greetings
-                    if (text.match(/\b(hi|hello|hey|start|menu)\b/i)) {
-                        return {
-                            reply: "Hi there! 👋 I'm operating in Low-Data Mode due to high traffic, but I can still help! What are you looking for?",
-                            intent: "chat"
-                        };
-                    }
+    // --- RESILIENT RESPONSE GENERATOR (Safe Mode) ---
+    async getResilientResponse(admin, text) {
+        try {
+            // 1. Check for Greetings
+            if (text.match(/\b(hi|hello|hey|start|menu|help)\b/i)) {
+                return {
+                    reply: "Hi there! 👋 I'm operating in 'Lite Mode' right now (experiencing high traffic). I can still help you find art! What kind of style or room are you looking for?",
+                    intent: "chat"
+                };
+            }
 
-                    // 2. Extract Keywords (Simple Noun Extraction)
-                    // We strip common stop words to find the "core" search term
-                    const stopWords = ["i", "want", "looking", "for", "a", "an", "the", "some", "art", "painting", "can", "you", "show", "me", "pictures", "of"];
-                    const keywords = text.toLowerCase().split(" ").filter(w => !stopWords.includes(w)).join(" ");
+            // 2. Extract Keywords (Simple Noun Extraction)
+            const stopWords = ["i", "want", "looking", "for", "a", "an", "the", "some", "art", "painting", "can", "you", "show", "me", "pictures", "of", "please", "find"];
+            const keywords = text.toLowerCase().split(" ").filter(w => !stopWords.includes(w)).join(" ");
 
-                    // 3. Execute Search with extracted keywords
-                    // If keywords are empty, search for "Best Sellers"
-                    const searchQuery = keywords.length > 2 ? keywords : "";
+            // 3. Execute Search
+            // If extracting keywords leaves us with nothing, we default to "Best Sellers"
+            // But we customize the message to be honest.
+            const searchQuery = keywords.length > 2 ? keywords : "";
 
-                    let products = await this.executeShopifySearch(admin, searchQuery);
+            let products = await this.executeShopifySearch(admin, searchQuery);
 
-                    if (products.length > 0) {
-                        return {
-                            reply: searchQuery
-                                ? `I couldn't reach my creative brain, but I found these **${searchQuery}** artworks for you! 🎨`
-                                : "I'm having trouble thinking, but here are our **Most Popular** artworks! 🔥",
-                            action: { type: "carousel", data: products },
-                            intent: "product_search"
-                        };
-                    } else {
-                        // 4. Zero Results -> Show Best Sellers
-                        const bestSellers = await this.executeShopifySearch(admin, "");
-                        return {
-                            reply: `I couldn't find anything for "${keywords}", but check out our customer favorites! 👇`,
-                            action: { type: "carousel", data: bestSellers },
-                            intent: "product_search"
-                        };
-                    }
-
-                } catch (e3) {
-                    console.error("❌ CRITICAL: Resilient Mode Failed:", e3);
+            if (products.length > 0) {
+                if (searchQuery) {
                     return {
-                        reply: "I'm having a technical hiccup. Please try clicking the 'Best Sellers' link in the menu above! 👆",
-                        intent: "error"
+                        reply: `I'm having a little trouble interpreting complex requests right now, but I found these **${searchQuery}** artworks for you! 🎨`,
+                        action: { type: "carousel", data: products },
+                        intent: "product_search"
+                    };
+                } else {
+                    // Empty query -> Best Sellers
+                    return {
+                        reply: "I'm having a hard time understanding that specific request in Lite Mode. But check out our **Most Popular** collections below! �",
+                        action: { type: "carousel", data: products },
+                        intent: "product_search"
                     };
                 }
+            } else {
+                // 4. Zero Results even after search -> Show Best Sellers explicitly
+                const bestSellers = await this.executeShopifySearch(admin, "");
+                return {
+                    reply: `I couldn't find a direct match for "${keywords}", but here are some customer favorites you might love! ❤️`,
+                    action: { type: "carousel", data: bestSellers },
+                    intent: "product_search"
+                };
             }
+
+        } catch (e3) {
+            console.error("❌ CRITICAL: Resilient Mode Failed completely:", e3);
+            // ABSOLUTE FINAL FALLBACK - NO CRASH
+            return {
+                reply: "I'm having a temporary connection issue. You can try searching for 'Abstract' or 'Nature' directly, or use the menu above to browse our collections. �️",
+                intent: "error"
+            };
         }
     },
 
@@ -132,18 +147,19 @@ export const AntigravityBrain = {
                 return await this.runTrace(genAI, modelName, systemInstruction, tools, history, text, admin);
             } catch (e) {
                 console.warn(`Attempt ${i + 1} failed for ${modelName}:`, e.message);
-                if (i === retries) throw e; // Throw only on last failure
-                await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Exponential backoff: 1s, 2s...
+                if (i === retries) throw e;
+                await new Promise(r => setTimeout(r, 1000 * (i + 1)));
             }
         }
     },
 
     async runTrace(genAI, modelName, systemInstruction, tools, history, text, admin) {
+        // ... (Same as before)
         console.log(`🤖 Attempting execution with model: ${modelName}`);
         const model = genAI.getGenerativeModel({ model: modelName, tools, systemInstruction });
 
         const chat = model.startChat({
-            history: history.map(h => ({
+            history: (history || []).map(h => ({
                 role: h.role === 'bot' ? 'model' : 'user',
                 parts: [{ text: h.message }]
             }))
@@ -181,9 +197,10 @@ export const AntigravityBrain = {
         return { reply: response.text(), intent: "chat" };
     },
 
-    // --- HELPERS (Unchanged) ---
+    // --- HELPERS ---
     async fetchStoreContext(admin) {
         try {
+            if (!admin) return { collections: "General Art", types: "Canvas" };
             const response = await admin.graphql(`{ collections(first: 10) { edges { node { title } } } productTypes(first: 10) { edges { node } } }`);
             const json = await response.json();
             const collections = json.data?.collections?.edges.map(e => e.node.title).join(", ") || "Art, Canvas";
@@ -192,19 +209,19 @@ export const AntigravityBrain = {
         } catch (e) { return { collections: "General Art", types: "Canvas" }; }
     },
     async executeShopifySearch(admin, query, maxPrice, color) {
-        let finalQuery = query;
-        if (color && !query.includes(color)) finalQuery = `${query} ${color}`;
+        // Validation
+        if (!admin) return [];
 
-        // Handle Empty Query -> "sort_key: BEST_SELLING"
+        let finalQuery = query;
+        if (color && query && !query.includes(color)) finalQuery = `${query} ${color}`;
+
         let graphqlQuery = "";
         let variables = {};
 
         if (!finalQuery || finalQuery.trim() === "") {
-            // Fetch raw list (Best Sellers / Newest)
             graphqlQuery = `#graphql query { products(first: 10, sortKey: BEST_SELLING) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
             variables = {};
         } else {
-            // Search by keyword
             graphqlQuery = `#graphql query ($q: String!) { products(first: 10, query: $q) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
             variables = { q: finalQuery };
         }
@@ -226,12 +243,13 @@ export const AntigravityBrain = {
             }));
         } catch (e) {
             console.error("Shopify Search GraphQL Error:", e);
-            return []; // Return empty array instead of throwing
+            return [];
         }
     },
     async executeVastuQuery(admin, direction) {
         const rules = { "North": { recommendation: "Water/Wealth (Blue, Waterfall)", keywords: "Water Blue" }, "South": { recommendation: "Fire/Fame (Red, Horses)", keywords: "Red Fire" }, "East": { recommendation: "Air/Social (Green, Plants)", keywords: "Green Forest" }, "West": { recommendation: "Gains (White, Gold)", keywords: "White Gold" }, "North-East": { recommendation: "Sacred (Spiritual, Shiva)", keywords: "Shiva Spiritual" } };
-        const normDir = Object.keys(rules).find(k => direction.toLowerCase().includes(k.toLowerCase())) || "North";
+        const safeDir = String(direction || "North");
+        const normDir = Object.keys(rules).find(k => safeDir.toLowerCase().includes(k.toLowerCase())) || "North";
         return rules[normDir];
     }
 };
