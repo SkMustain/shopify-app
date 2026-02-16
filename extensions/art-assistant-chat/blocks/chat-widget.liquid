@@ -18,7 +18,7 @@
             
             <div id="art-assistant-messages" class="art-messages-container">
                 <div class="art-message bot">
-                    I'd love to help you find the perfect piece! First, which room are you decorating?
+                    Hi 👋<br>Let’s find the perfect painting for your space.<br><br>What would you like to do?
                 </div>
                 <!-- Dynamic Content -->
             </div>
@@ -740,10 +740,9 @@
       
       function showQuickActions() {
           addActions([
-            { label: "Vastu Consultant", payload: "vastu_intro" },
-            { label: "Living Room", payload: "flow_room:Living Room" },
-            { label: "Bedroom", payload: "flow_room:Bedroom" },
-            { label: "Visual Search", payload: "visual search" }
+            { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+            { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
+            { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
           ]);
       }
       

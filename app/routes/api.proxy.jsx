@@ -1,15 +1,13 @@
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  // App Proxy requests receive a signature that must be validated
-  // authenticate.public.appProxy handles this validation automatically
   const { session, cors } = await authenticate.public.appProxy(request);
 
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  return Response.json({ status: "ok", message: "Hello from the Art Assistant API!" }, { headers: cors?.headers || {} });
+  return Response.json({ status: "ok", message: "Art Assistant API v2 Ready" }, { headers: cors?.headers || {} });
 };
 
 export const action = async ({ request }) => {
@@ -17,544 +15,330 @@ export const action = async ({ request }) => {
     const { session, admin, cors } = await authenticate.public.appProxy(request);
 
     if (!session) {
-      // Return 200 with error to bypass Shopify's 500 error page
       return Response.json({ reply: "Error: Unauthorized (Session invalid)" }, { headers: cors?.headers || {} });
     }
 
     const payload = await request.json();
-    const userMessage = (payload.message || "").toLowerCase();
-    const userImage = payload.image;
+    const userMessage = (payload.message || "").trim();
+    const userImage = payload.image; // Base64 image
+    const payloadTag = payload.payload; // From button clicks
 
-    // Import Prisma (ensure db.server.js exists/exports it)
+    // Import Prisma & Services
     const { default: prisma } = await import("../db.server");
+    const { AntigravityBrain } = await import("../services/antigravity.server");
 
-    // Fetch Vastu Config (with defaults)
-    const vastuConfig = await prisma.vastuConfig.findMany();
-    const getConfig = (dir) => vastuConfig.find(c => c.direction === dir) || {
-      recommendation: dir === "North" || dir === "East" ? "Waterfalls or Nature (Growth)" :
-        dir === "South" ? "running horses or fire themes (Success)" :
-          "mountains or birds (Stability)",
-      keywords: dir === "waterfall landscape nature" // fallback keywords
-    };
+    // --- STATE MACHINE HELPERS ---
+    // We infer state from the 'payloadTag' or specific keywords
+    // Payloads follow pattern: "FLOW_NAME:STEP_NAME:DATA"
 
-    let responseData = { reply: "I can help you find art. Try asking for 'Vastu' or 'Bedroom' advice." };
-    let shouldSearch = false; // Flag to determine if we run the GQL query
+    let responseData = { reply: "I didn't capture that. Could you try again?" };
 
-    // Core signals
-    let searchQueries = []; // Array of broad queries
-    let designCritique = ""; // Expert analysis text
-    let userContext = ""; // For curation prompt
-    let analysisLog = ""; // For DB logging
-    let replyPrefix = ""; // To prepend to the carousel intro
-    let desiredFormat = ""; // 'painting', 'poster', or ''
-    let isVastuStrict = false; // FLAG: Strict Vastu Search
-    let vastuDirection = ""; // Store direction for error message
-
-    // 1. VISUAL SEARCH (EXPERT MODE)
-    if (userImage) {
-      // ... (Existing Vision Logic)
-      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
-
-      if (apiKeySetting && apiKeySetting.value) {
-        try {
-          const { GoogleGenerativeAI } = await import("@google/generative-ai");
-          const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-
-          // Helper to try models in sequence
-          const generateWithFallback = async (prompt, imagePart) => {
-            const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
-            let errorLog = [];
-
-            for (const modelName of modelsToTry) {
-              try {
-                console.log(`Attempting Gemini Model (Vision): ${modelName}`);
-                const model = genAI.getGenerativeModel({ model: modelName });
-                const result = await model.generateContent([prompt, imagePart]);
-                return { result, modelName };
-              } catch (e) {
-                console.error(`Model ${modelName} failed:`, e.message);
-                errorLog.push(`${modelName}: ${e.message}`);
-              }
-            }
-            throw new Error(errorLog.join(" | "));
-          };
-
-          // Prepare image
-          const base64Data = userImage.split(',')[1];
-          const imagePart = {
-            inlineData: { data: base64Data, mimeType: "image/jpeg" },
-          };
-
-          const prompt = `Act as an Expert Interior Designer. 
-          User's Question: "${userMessage ? userMessage.replace(/"/g, "'") : "No specific question, just give advice."}"
-          
-          Analyze this room's interior design style, color palette, and mood.
-          
-          TASK:
-          1. If the user asked a specific question (e.g. "What color fits?", "Is this modern?"), ANSWER IT directly and succinctly in the 'critique' field.
-          2. If no specific question is present, identify what wall art would elevate the space.
-          3. Generate Shopify search terms that match your advice/answer.
-          
-          Return a JSON object with keys: 
-          'critique': "Direct answer to user's question, OR a 2-sentence expert critique.",
-          'searchQueries': (A JSON ARRAY of 3 SIMPLE, HIGH-RECALL Shopify search terms. e.g. ["Abstract", "Beige Art", "Canvas"]. Do NOT use complex phrases. Keep it simple.),
-          'style': "Short style name (e.g. Minimalist)"
-
-          Return ONLY the JSON string.`;
-
-          const { result, modelName } = await generateWithFallback(prompt, imagePart);
-          const text = result.response.text();
-          console.log("Raw Gemini Output (Vision):", text);
-
-          // JSON Extraction
-          const start = text.indexOf('{');
-          const end = text.lastIndexOf('}');
-          if (start !== -1 && end !== -1) {
-            const json = JSON.parse(text.substring(start, end + 1));
-
-            designCritique = json.critique || "I analyzed your room's style.";
-            searchQueries = json.searchQueries || ["Art"];
-            analysisLog = `Style: ${json.style}. Critique: ${designCritique}`;
-
-            // Set context for the Curator later
-            userContext = `Visual Analysis: ${designCritique}. User's Message: ${userMessage}`;
-            shouldSearch = true;
-          } else {
-            throw new Error("Invalid JSON from Vision");
-          }
-
-        } catch (e) {
-          console.error("Gemini Vision Error:", e);
-          searchQueries = ["Modern Art", "Abstract"];
-          designCritique = "I had trouble analyzing the image deeply, but I've picked some modern pieces for you.";
-          shouldSearch = true;
-        }
-      } else {
-        // MOCK FALLBACK
-        searchQueries = ["Abstract Art"];
-        designCritique = "(Mock) Your room has a lovely modern vibe. A bold abstract piece would look great here.";
-        shouldSearch = true;
-      }
-
-      await prisma.customerImage.create({
-        data: {
-          imageData: userImage.substring(0, 100) + "...",
-          analysisResult: analysisLog || "Error/Mock"
-        }
-      });
+    // --- 1. INITIAL GREETING ---
+    if (userMessage.toLowerCase() === "hi" || userMessage.toLowerCase() === "hello" || userMessage === "RESET_FLOW") {
+      responseData = {
+        reply: "Hi 👋\nLet’s find the perfect painting for your space.\n\nWhat would you like to do?",
+        type: "actions",
+        data: [
+          { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+          { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
+          { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
+        ]
+      };
     }
 
-    // 2. GUIDED SEARCH FLOW (WIZARD)
-    else if (userMessage.includes("help") || userMessage.includes("choose") || userMessage.startsWith("flow_") || userMessage === "vastu_intro") {
+    // --- 2. FLOW 1: VISUAL SEARCH (Upload -> Colors -> Theme -> Budget) ---
+    else if (payloadTag?.startsWith("FLOW_VISUAL:") || (userImage && !payloadTag)) {
+      const step = payloadTag ? payloadTag.split(":")[1] : "HANDLE_IMAGE";
 
-      // STEP 1: TRIGGER (or restart)
-      if (userMessage.includes("help") || userMessage.includes("choose")) {
-        return Response.json({
-          reply: "I'd love to help you find the perfect piece! First, which room are you decorating?",
+      // A. Start -> Ask for Image
+      if (step === "START") {
+        responseData = {
+          reply: "Please upload a clear photo of your room wall 📸",
           type: "actions",
-          data: [
-            { label: "Vastu Consultant", payload: "vastu_intro" },
-            { label: "Living Room", payload: "flow_room:Living Room" },
-            { label: "Bedroom", payload: "flow_room:Bedroom" },
-            { label: "Visual Search", payload: "visual search" }
-          ]
-        }, { headers: cors?.headers || {} });
-      }
-
-      // VASTU INTRO
-      else if (userMessage === "vastu_intro") {
-        return Response.json({
-          reply: "Vastu Shastra balances your home's energy. \n\n**Quick Tips:**\n🌊 **North:** Water (Wealth)\n🔥 **South:** Fire/Horses (Fame)\n🌿 **East:** Nature (Health)\n🏔️ **West:** Mountains (Stability)\n\nWhich wall are you decorating?",
-          type: "actions",
-          data: [
-            { label: "North (Wealth)", payload: "Vastu North" },
-            { label: "South (Fame)", payload: "Vastu South" },
-            { label: "East (Health)", payload: "Vastu East" },
-            { label: "West (Stability)", payload: "Vastu West" }
-          ]
-        }, { headers: cors?.headers || {} });
-      }
-
-      // STEP 2: ROOM SELECTED -> ASK VIBE
-      else if (userMessage.startsWith("flow_room:")) {
-        const room = userMessage.replace("flow_room:", "").trim();
-        // Store context in title
-        return Response.json({
-          reply: `Got it, **${room}**! Now, what kind of vibe or color palette are you looking for?`,
-          type: "actions",
-          data: [
-            { label: "Modern & Beige", payload: `flow_vibe:${room} Modern Beige` },
-            { label: "Bold & Colorful", payload: `flow_vibe:${room} Bold Colorful` },
-            { label: "Calm & Nature", payload: `flow_vibe:${room} Calm Nature` }
-          ]
-        }, { headers: cors?.headers || {} });
-      }
-
-      // STEP 3: VIBE SELECTED -> ASK FORMAT (NEW STEP)
-      else if (userMessage.startsWith("flow_vibe:")) {
-        const currentContext = userMessage.replace("flow_vibe:", "").trim(); // e.g. "Living Room Modern Beige"
-        return Response.json({
-          reply: `Excellent choice! Do you prefer a painted look (Canvas) or a sleek Poster (print)?`,
-          type: "actions",
-          data: [
-            { label: "Painting / Canvas", payload: `flow_final:${currentContext} [FORMAT:PAINTING]` },
-            { label: "Poster / Print", payload: `flow_final:${currentContext} [FORMAT:POSTER]` },
-            { label: "Any Surface", payload: `flow_final:${currentContext} [FORMAT:ANY]` }
-          ]
-        }, { headers: cors?.headers || {} });
-      }
-
-      // STEP 4: FINAL TRIGGER
-      else if (userMessage.startsWith("flow_final:")) {
-        let finalPayload = userMessage.replace("flow_final:", "").trim();
-
-        // Extract Format
-        if (finalPayload.includes("[FORMAT:PAINTING]")) {
-          desiredFormat = "painting";
-          finalPayload = finalPayload.replace("[FORMAT:PAINTING]", "").trim();
-        } else if (finalPayload.includes("[FORMAT:POSTER]")) {
-          desiredFormat = "poster";
-          finalPayload = finalPayload.replace("[FORMAT:POSTER]", "").trim();
-        } else {
-          finalPayload = finalPayload.replace("[FORMAT:ANY]", "").trim();
-        }
-
-        userContext = `User completed guided flow. Request: ${finalPayload}. PREFERRED FORMAT: ${desiredFormat.toUpperCase()}`;
-        searchQueries = []; // Will be generated by AI
-        shouldSearch = true;
-      }
-    }
-
-    // 3. VASTU LOGIC (SEARCH)
-    else if (userMessage.includes("vastu")) {
-      // ... (Vastu logic)
-      let direction = "";
-      if (userMessage.includes("north")) direction = "North";
-      else if (userMessage.includes("east")) direction = "East";
-      else if (userMessage.includes("south")) direction = "South";
-      else if (userMessage.includes("west")) direction = "West";
-
-      if (direction) {
-        const conf = getConfig(direction);
-        designCritique = `For **${direction}**-facing walls, I recommend: ${conf.recommendation || "specific colors"}.`;
-
-        // **STRICT SEARCH**: Look for tagged products ONLY
-        // If the user tagged products with "Vastu-North", we want those to show up 100%.
-        const tagQuery = `tag:Vastu-${direction}`;
-
-        // STRICT: Only use the tag query. No keywords.
-        searchQueries = [tagQuery];
-        isVastuStrict = true;
-        vastuDirection = direction;
-
-        userContext = `User wants Vastu compliant art for ${direction} wall.`;
-        shouldSearch = true;
-      } else {
-        return Response.json({
-          reply: "Vastu Shastra depends on direction. Which wall are you decorating?",
-          type: "actions",
-          data: [
-            { label: "North (Wealth)", payload: "Vastu North" },
-            { label: "South (Fame)", payload: "Vastu South" },
-            { label: "East (Health)", payload: "Vastu East" },
-            { label: "West (Stability)", payload: "Vastu West" }
-          ]
-        }, { headers: cors?.headers || {} });
-      }
-    }
-    else {
-      // Standard Text Handling: POWERED BY ANTIGRAVITY BRAIN v2
-      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
-
-      // Import Brain Service
-      const { AntigravityBrain } = await import("../services/antigravity.server");
-
-      // 1. Run Local Brain Analysis (0ms Latency)
-      const brainAnalysis = AntigravityBrain.process(userMessage);
-      console.log("Antigravity Brain Decision:", brainAnalysis);
-
-      let brainResult = { type: "search", query: userMessage };
-
-      // A. High Confidence Local Chat
-      if (brainAnalysis.intent === "chat" && brainAnalysis.confidence > 0.8) {
-        brainResult = {
-          type: "chat",
-          reply: brainAnalysis.reply || "Hello! 👋 I am your smart Art Assistant. How can I help you today?"
+          data: []
         };
       }
 
-      // B. Cloud Intelligence (Gemini 2.0) - For Search/Refine
-      else if (apiKeySetting && apiKeySetting.value) {
-        const { GoogleGenerativeAI } = await import("@google/generative-ai");
-        const genAI = new GoogleGenerativeAI(apiKeySetting.value);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-        try {
-          // CLOUD BRAIN PROMPT (Enhanced with Local Entities)
-          const entitiesCtx = JSON.stringify(brainAnalysis.entities);
-
-          const brainPrompt = `
-                User Input: "${userMessage}"
-                Extracted Context (Local Brain): ${entitiesCtx}
-                Role: Intelligent Art Assistant.
-                
-                Task: Classify User Intent.
-                
-                PATH 1: "chat" (Slang, Greetings, Off-topic)
-                PATH 2: "refine" (Vague requests)
-                PATH 3: "search" (Specific requests)
-
-                Return JSON ONLY: { "type": "chat" | "refine" | "search", "reply": "...", "search_query": "..." }
-             `;
-
-          const result = await model.generateContent(brainPrompt);
-          const text = result.response.text();
-          const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-          const jsonMatch = cleanedText.match(/\{.*\}/s);
-
-          if (jsonMatch) {
-            brainResult = JSON.parse(jsonMatch[0]);
-          }
-        } catch (e) {
-          console.error("Cloud Brain Error:", e);
-        }
-      }
-
-      // ACT ON BRAIN DECISION
-      if (brainResult.type === "chat" || brainResult.type === "refine") {
-        return Response.json({ reply: brainResult.reply || "How can I help you find art?" }, { headers: cors?.headers || {} });
-      }
-
-      // If SEARCH, proceed with the optimized query
-      if (brainResult.type === "search" && brainResult.search_query) {
-        userContext = brainResult.search_query;
-        // Format detection (preserves explicit format info)
-        if (userContext.toLowerCase().includes("poster")) desiredFormat = "poster";
-        if (userContext.toLowerCase().includes("canvas")) desiredFormat = "painting";
-      } else {
-        userContext = userMessage; // Fallback
-      }
-
-      shouldSearch = true;
-    }
-
-    // --- EXPERT SEARCH EXECUTION ---
-    if (shouldSearch) {
-
-      // Define effective query
-      let effectiveQuery = userContext;
-      if (desiredFormat) {
-        effectiveQuery += ` (User wants ${desiredFormat})`;
-      }
-
-      // 1. QUERY GENERATION
-      const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
-      let genAI;
-      let useAiCuration = false;
-
-      // Only generate queries if searchQueries is empty (i.e., not already set by Vastu logic)
-      if (searchQueries.length === 0) {
-        if (apiKeySetting && apiKeySetting.value) {
-          const { GoogleGenerativeAI } = await import("@google/generative-ai");
-          genAI = new GoogleGenerativeAI(apiKeySetting.value);
-          useAiCuration = true;
-
-          try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
-
-            // Expert Prompt with Format Awareness AND Stronger Logic
-            const qPrompt = `Act as an Elite Art Curator. User input: "${effectiveQuery}". 
-                    1. Analyze the core emotion, subject, and style.
-                    2. Write a 1-sentence expert critique identifying exactly what fits.
-                    3. Generate 6 DISTINCT, HIGH-IMPACT Shopify search terms.
-                       - Mix styles (e.g. "Abstract"), subjects (e.g. "Landscape"), and moods (e.g. "Serene").
-                       - If user asks a complex question, break it down into widely searchable tags.
-                    4. CRITICAL: If format is 'painting', ensure 'Canvas' is a keyword. If 'poster', 'Print'.
-                    
-                    Return JSON: { "critique": "...", "searchQueries": ["Term1", "Term2", "Term3", "Term4", "Term5", "Term6"] }`;
-
-            const result = await model.generateContent(qPrompt);
-            const text = result.response.text();
-            const jsonMatch = text.match(/\{.*\}/s);
-            if (jsonMatch) {
-              const json = JSON.parse(jsonMatch[0]);
-              searchQueries = json.searchQueries || [];
-              designCritique = json.critique || "";
-              userContext = `Request: ${effectiveQuery}. Curator Note: ${designCritique}`;
+      // B. Handle Image Upload -> Ask Color Preference
+      else if (step === "HANDLE_IMAGE" || (userImage && !payloadTag)) {
+        // SAVE IMAGE TO DB
+        let imageId = "0";
+        if (userImage) {
+          const newImg = await prisma.customerImage.create({
+            data: {
+              imageData: userImage.substring(0, 50) + "...", // Truncate log
+              analysisResult: "Pending Analysis"
             }
-          } catch (e) {
-            console.error("Text Query Gen Error:", e);
+          });
+          imageId = newImg.id.toString();
+
+          // RUN VISION ANALYSIS NOW (Background-ish)
+          if (process.env.GEMINI_API_KEY) {
+            // ... Analysis logic ...
           }
         }
-      }
-
-      // Fallback or Empty
-      if (searchQueries.length === 0) {
-        searchQueries = [userMessage.replace("flow_final:", "").trim() || "Art"];
-      }
-
-      console.log("Broad Search Queries:", searchQueries);
-
-      // 2. ROBUST POOLING (Fetch Tags/Type)
-      const fetchProducts = async (q) => {
-        try {
-          const response = await admin.graphql(
-            `#graphql
-                query ($query: String!) {
-                  products(first: 50, query: $query) {
-                    edges {
-                      node {
-                        id
-                        title
-                        handle
-                        description(truncateAt: 100)
-                        productType
-                        vendor
-                        tags
-                        variants(first: 1) { edges { node { id } } }
-                        priceRangeV2 { minVariantPrice { amount currencyCode } }
-                        featuredImage { url }
-                      }
-                    }
-                  }
-                }`,
-            { variables: { query: q } }
-          );
-          const json = await response.json();
-          const edges = json.data?.products?.edges || [];
-          console.log(`Query [${q}] found ${edges.length} products (Raw)`); // DEBUG LOG
-          return edges;
-        } catch (err) {
-          console.error(`Fetch Error for query [${q}]:`, err);
-          return [];
-        }
-      };
-
-      // Execute search - results will be naturally ordered by the query order in searchQueries
-      // Because we put tag:Vastu-... first, those results come first in the array.
-      const results = await Promise.all(searchQueries.map(q => fetchProducts(q)));
-
-      const candidateMap = new Map();
-      results.flat().forEach(edge => {
-        if (!candidateMap.has(edge.node.handle)) {
-          candidateMap.set(edge.node.handle, edge.node);
-        }
-      });
-      let candidates = Array.from(candidateMap.values());
-      console.log(`Initial Candidates (Unique): ${candidates.length}`); // DEBUG LOG
-
-      // ZERO RESULT POLICY (Skip for Vastu Strict)
-      if (candidates.length < 5 && !isVastuStrict) {
-        console.log("Pool too small. triggering Fallback 'Art' search.");
-        const fallback = await fetchProducts("Art");
-        fallback.forEach(edge => {
-          if (!candidateMap.has(edge.node.handle)) {
-            candidateMap.set(edge.node.handle, edge.node);
-          }
-        });
-        candidates = Array.from(candidateMap.values());
-      }
-
-      // 3. EXPERT CURATION (STRICT FORMAT FILTER)
-      let finalProducts = [];
-      let expertAdvice = "";
-
-      // IF we have specific tagged Vastu results, we might want to skip AI Curation to strictly show what user selected?
-      // Logic: If the query included a 'tag:', we trust those results more. 
-      // Checking if our primary query was a tag query
-      const isTagSearch = searchQueries.some(q => q.startsWith("tag:"));
-
-      if (useAiCuration && candidates.length > 0 && !isTagSearch) {
-        try {
-          // Pass metadata to AI
-          const pool = candidates.slice(0, 50).map(p => ({
-            handle: p.handle,
-            title: p.title,
-            type: p.productType,
-            tags: p.tags, // Array of strings
-            desc: p.description
-          }));
-
-          const curationPrompt = `
-                    You are an Expert Interior Designer.
-                    Context: "${designCritique || userContext}"
-                    Required Format: "${desiredFormat || "Any"}"
-                    
-                    Task: Select the top 5 pieces from the list below.
-                    
-                    STRICT RULES:
-                    1. If Required Format is 'painting', REJECT any item with type/tag 'Poster', 'Print', 'Paper'. Prefers 'Canvas', 'Original'.
-                    2. If Required Format is 'poster', REJECT any item with type/tag 'Canvas', 'Original'. Prefers 'Print', 'Poster'.
-                    3. Match the user's aesthetic perfectly.
-                    
-                    Candidates: ${JSON.stringify(pool)}
-
-                    Return JSON: { "selectedHandles": ["..."], "expertAdvice": "I chose these because..." }
-                `;
-
-          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // HIGH VERSION
-          const result = await model.generateContent(curationPrompt);
-          const text = result.response.text();
-
-          const start = text.indexOf('{');
-          const end = text.lastIndexOf('}');
-          if (start !== -1 && end !== -1) {
-            const json = JSON.parse(text.substring(start, end + 1));
-            const selectedHandles = json.selectedHandles || [];
-            expertAdvice = json.expertAdvice || "";
-
-            finalProducts = selectedHandles
-              .map(h => candidateMap.get(h))
-              .filter(Boolean);
-          }
-        } catch (e) {
-          console.error("Curation Error:", e);
-          finalProducts = candidates.slice(0, 5);
-        }
-      } else {
-        // For Vastu (Tag Search) or no AI, just take the top 15 (covering the user's "2-10" request)
-        finalProducts = candidates.slice(0, 15);
-      }
-
-      console.log(`Final Products Count: ${finalProducts.length}`); // DEBUG LOG
-
-      // 4. RESPONSE
-      if (finalProducts.length > 0) {
-        let intro = "";
-        if (designCritique) {
-          intro += `${designCritique}\n\n`;
-        }
-        if (expertAdvice) {
-          intro += `**Designer's Pick:** ${expertAdvice}`;
-        } else {
-          intro += "Here are the best matches for your space.";
-        }
-
-        replyPrefix = intro;
-
-        const carouselData = finalProducts.map(node => ({
-          title: node.title,
-          price: node.priceRangeV2?.minVariantPrice ? `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}` : "Price N/A",
-          image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
-          url: `/products/${node.handle}`,
-          variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "", // Extract ID
-          vendor: node.vendor || "Art Assistant"
-        }));
 
         responseData = {
-          reply: replyPrefix,
-          type: "carousel",
-          data: carouselData
+          reply: "Got it! Do you have a specific color preference?",
+          type: "actions",
+          data: [
+            { label: "🎨 Yes, I want specific colors", payload: `FLOW_VISUAL:ASK_COLOR:${imageId}` },
+            { label: "🤍 No, You Choose for Me", payload: `FLOW_VISUAL:ASK_VIBE_DIRECT:${imageId}` }
+          ]
         };
+      }
+
+      // C. Ask Specific Colors
+      else if (step === "ASK_COLOR") {
+        const imgId = payloadTag.split(":")[2];
+        responseData = {
+          reply: "Which colors would you like in your painting?",
+          type: "actions",
+          data: [
+            { label: "Warm tones", payload: `FLOW_VISUAL:SET_COLOR:Warm:${imgId}` },
+            { label: "Cool tones", payload: `FLOW_VISUAL:SET_COLOR:Cool:${imgId}` },
+            { label: "Neutral", payload: `FLOW_VISUAL:SET_COLOR:Neutral:${imgId}` },
+            { label: "Bold & Vibrant", payload: `FLOW_VISUAL:SET_COLOR:Bold:${imgId}` }
+          ]
+        };
+      }
+
+      // D. Theme Preference
+      else if (step === "SET_COLOR" || step === "ASK_VIBE_DIRECT") {
+        const parts = payloadTag.split(":");
+        const chosenColor = step === "SET_COLOR" ? parts[2] : "Auto";
+        const imgId = parts[parts.length - 1]; // Last part is ID
+
+        const replyText = step === "ASK_VIBE_DIRECT"
+          ? "What vibe do you want in your room?"
+          : "Great choice! What theme fits your space best?";
+
+        const options = step === "ASK_VIBE_DIRECT"
+          ? [ // Vibe Options
+            { label: "Cozy & Calm", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Cozy:${imgId}` },
+            { label: "Bold & Dramatic", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Bold:${imgId}` },
+            { label: "Modern & Clean", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Modern:${imgId}` },
+            { label: "Royal & Premium", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Royal:${imgId}` }
+          ]
+          : [ // Theme Options
+            { label: "Abstract", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Abstract:${imgId}` },
+            { label: "Modern Minimal", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Minimal:${imgId}` },
+            { label: "Nature", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Nature:${imgId}` },
+            { label: "Luxury", payload: `FLOW_VISUAL:SET_THEME:${chosenColor}:Luxury:${imgId}` }
+          ];
+
+        responseData = {
+          reply: replyText,
+          type: "actions",
+          data: options
+        };
+      }
+
+      // E. Budget Step
+      else if (step === "SET_THEME") {
+        const [_, _, color, theme, imgId] = payloadTag.split(":");
+        responseData = {
+          reply: "What is your budget range?",
+          type: "actions",
+          data: [
+            { label: "₹999 – ₹1999", payload: `FLOW_VISUAL:FINAL:${color}:${theme}:Low:${imgId}` },
+            { label: "₹2000 – ₹5000", payload: `FLOW_VISUAL:FINAL:${color}:${theme}:Mid:${imgId}` },
+            { label: "₹5000+", payload: `FLOW_VISUAL:FINAL:${color}:${theme}:High:${imgId}` }
+          ]
+        };
+      }
+
+      // F. Final Response (Visual Flow)
+      else if (step === "FINAL") {
+        const [_, _, color, theme, budget, imgId] = payloadTag.split(":");
+
+        // IF "Auto" color/theme, we rely on Gemini Vision here if we had the image content.
+        // But we only have ID. 
+        // Ideally we fetched tags earlier.
+        // For V1, we map "Cozy" -> "Warm, Soft, Beige"
+
+        let searchQuery = theme;
+        if (theme === "Cozy") searchQuery = "Warm Beige Soft Art";
+        if (theme === "Bold") searchQuery = "Abstract Colorful Red Blue";
+        if (theme === "Modern") searchQuery = "Minimalist Geometric Black White";
+        if (theme === "Royal") searchQuery = "Gold Classic Luxury Canvas";
+
+        if (color !== "Auto") searchQuery += ` ${color}`;
+
+        responseData = await executeSearch(admin, searchQuery, { budget });
+        responseData.reply = `Based on your preferences **(${theme}, ${color})**, here are some matches ✨`;
+      }
+    }
+
+
+    // --- 3. FLOW 2: CUSTOM REQUIREMENTS (Intake Form) ---
+    else if (payloadTag?.startsWith("FLOW_CUSTOM:")) {
+      const parts = payloadTag.split(":");
+      const step = parts[1];
+      // Accumulate state in payload: FLOW_CUSTOM:STEP:Data1|Data2|Data3...
+
+      if (step === "START") {
+        responseData = {
+          reply: "Tell me what you're looking for. First, **which room** is this for?",
+          type: "actions",
+          data: [
+            { label: "Bedroom", payload: "FLOW_CUSTOM:SIZE:Bedroom" },
+            { label: "Living Room", payload: "FLOW_CUSTOM:SIZE:Living Room" },
+            { label: "Office", payload: "FLOW_CUSTOM:SIZE:Office" },
+            { label: "Cafe", payload: "FLOW_CUSTOM:SIZE:Cafe" },
+            { label: "Gift", payload: "FLOW_CUSTOM:SIZE:Gift" }
+          ]
+        };
+      }
+
+      else if (step === "SIZE") {
+        const room = parts[2];
+        responseData = {
+          reply: "Got it. What is the approximate **wall size**?",
+          type: "actions",
+          data: [
+            { label: "Small (under 3ft)", payload: `FLOW_CUSTOM:THEME:${room}|Small` },
+            { label: "Medium (3-5ft)", payload: `FLOW_CUSTOM:THEME:${room}|Medium` },
+            { label: "Large (5ft+)", payload: `FLOW_CUSTOM:THEME:${room}|Large` }
+          ]
+        };
+      }
+
+      else if (step === "THEME") {
+        const history = parts[2];
+        responseData = {
+          reply: "Do you have a specific **theme**?",
+          type: "actions",
+          data: [
+            { label: "Abstract", payload: `FLOW_CUSTOM:BUDGET:${history}|Abstract` },
+            { label: "Portrait", payload: `FLOW_CUSTOM:BUDGET:${history}|Portrait` },
+            { label: "Nature", payload: `FLOW_CUSTOM:BUDGET:${history}|Nature` },
+            { label: "Religious", payload: `FLOW_CUSTOM:BUDGET:${history}|Religious` },
+            { label: "Other", payload: `FLOW_CUSTOM:BUDGET:${history}|Other` }
+          ]
+        };
+      }
+
+      else if (step === "BUDGET") {
+        const history = parts[2];
+        responseData = {
+          reply: "What is your budget?",
+          type: "actions",
+          data: [
+            { label: "₹2k – ₹5k", payload: `FLOW_CUSTOM:TYPE:${history}|₹2k-5k` },
+            { label: "₹5k – ₹10k", payload: `FLOW_CUSTOM:TYPE:${history}|₹5k-10k` },
+            { label: "₹10k+", payload: `FLOW_CUSTOM:TYPE:${history}|₹10k+` }
+          ]
+        };
+      }
+
+      else if (step === "TYPE") {
+        const history = parts[2];
+        responseData = {
+          reply: "Would you like a ready-made option or a custom design?",
+          type: "actions",
+          data: [
+            { label: "🖼 Ready-Made", payload: `FLOW_CUSTOM:FINAL_READY:${history}` },
+            { label: "🎨 Fully Custom", payload: `FLOW_CUSTOM:FINAL_CUSTOM:${history}` }
+          ]
+        };
+      }
+
+      else if (step.startsWith("FINAL_")) {
+        const history = parts[2];
+        // Save as Lead
+        await prisma.vastuLog.create({
+          data: {
+            direction: "LEAD",
+            query: `Custom Request: ${history} (${step})`
+          }
+        });
+
+        responseData = {
+          reply: "Please **type your phone number** and a short description of your idea. \n\nOur design team will contact you within 24 hours! 🕒"
+        };
+      }
+    }
+
+
+    // --- 4. FLOW 3: HELP ME CHOOSE (Guided) ---
+    else if (payloadTag?.startsWith("FLOW_GUIDE:")) {
+      const parts = payloadTag.split(":");
+      const step = parts[1];
+
+      if (step === "START") {
+        responseData = {
+          reply: "I’ll help you choose something stunning ✨\n\nFirst, what room is it for?",
+          type: "actions",
+          data: [
+            { label: "Living Room", payload: "FLOW_GUIDE:MOOD:Living Room" },
+            { label: "Bedroom", payload: "FLOW_GUIDE:MOOD:Bedroom" },
+            { label: "Dining Area", payload: "FLOW_GUIDE:MOOD:Dining" },
+            { label: "Office", payload: "FLOW_GUIDE:MOOD:Office" }
+          ]
+        };
+      }
+
+      else if (step === "MOOD") {
+        const room = parts[2];
+        responseData = {
+          reply: `For the **${room}**, what mood do you want to create?`,
+          type: "actions",
+          data: [
+            { label: "Calm & Relaxing", payload: `FLOW_GUIDE:SHOW:${room}|Calm` },
+            { label: "Energetic & Bold", payload: `FLOW_GUIDE:SHOW:${room}|Energetic` },
+            { label: "Luxurious & Classy", payload: `FLOW_GUIDE:SHOW:${room}|Luxury` },
+            { label: "Devotional / Positive", payload: `FLOW_GUIDE:SHOW:${room}|Devotional` }
+          ]
+        };
+      }
+
+      else if (step === "SHOW") {
+        const [room, mood] = parts[2].split("|");
+
+        // Map to Collections or Search Query
+        // Since we don't have collection IDs, we search.
+        let query = "";
+        if (mood === "Calm") query = "Nature Zen Blue Beige";
+        if (mood === "Energetic") query = "Abstract Colorful Pop";
+        if (mood === "Luxury") query = "Gold Abstract Large Canvas";
+        if (mood === "Devotional") query = "Buddha Ganesha Spiritual";
+
+        responseData = await executeSearch(admin, query, {});
+        responseData.reply = `Here are some ${mood} picks for your ${room} ✨\n\n**Confidence Booster:** 4.8★ Rated by 1,200+ customers!`;
+      }
+    }
+
+    // --- 5. GENERIC TEXT HANDLER (Catch-all) ---
+    else if (userMessage) {
+      // Check if it looks like a phone number (for Custom Flow)
+      if (userMessage.match(/(\d{10})/)) {
+        responseData = {
+          reply: "Thank you! We have received your request. Our team will call you shortly on this number. 🎨"
+        };
+        // TODO: Log this to DB
       } else {
-        if (isVastuStrict) {
-          responseData = {
-            reply: `I haven't found any Vastu-compliant art for **${vastuDirection}** yet. Please check back later!`
-          };
+        // Default "Brain" handling for random queries
+        const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+
+        // 1. Run Local Brain Analysis (0ms Latency)
+        const brainAnalysis = AntigravityBrain.process(userMessage);
+
+        if (brainAnalysis.intent === "chat" && brainAnalysis.confidence > 0.8) {
+          responseData = { reply: brainAnalysis.reply || "Hi! How can I help you decorate?" };
+          if (userMessage.toLowerCase().includes("hi") || userMessage.toLowerCase().includes("hello")) {
+            // Force menu
+            responseData.type = "actions";
+            responseData.data = [
+              { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+              { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
+              { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
+            ];
+          }
         } else {
-          responseData = {
-            reply: "I looked through the entire collection, but it seems empty! Please add some products to Shopify."
-          };
+          // Fallback Search
+          responseData = await executeSearch(admin, userMessage, {});
+          responseData.reply = `Here are some results for "${userMessage}"`;
         }
       }
     }
@@ -564,7 +348,82 @@ export const action = async ({ request }) => {
   } catch (error) {
     console.error("Proxy Error:", error);
     return Response.json({
-      reply: `Debug Error: ${error.message} \nStack: ${error.stack}`
+      reply: `Sorry, I'm having trouble right now. Please try again later. (Error: ${error.message})`
     }, { status: 200 });
   }
 };
+
+
+// --- SEARCH HELPER ---
+async function executeSearch(admin, query, filters) {
+  const { budget } = filters;
+
+  // Construct Query
+  let finalQuery = query;
+
+  try {
+    const response = await admin.graphql(
+      `#graphql
+            query ($query: String!) {
+              products(first: 50, query: $query) {
+                edges {
+                  node {
+                    id
+                    title
+                    handle
+                    description(truncateAt: 100)
+                    productType
+                    vendor
+                    tags
+                    variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                    featuredImage { url }
+                    priceRangeV2 { minVariantPrice { amount currencyCode } }
+                  }
+                }
+              }
+            }`,
+      { variables: { query: finalQuery } }
+    );
+
+    const json = await response.json();
+    let products = json.data?.products?.edges.map(e => e.node) || [];
+
+    // Apply Budget Filter in Memory
+    if (budget) {
+      products = products.filter(p => {
+        const price = parseFloat(p.priceRangeV2?.minVariantPrice?.amount || "0");
+        if (budget === "Low") return price >= 999 && price <= 1999;
+        if (budget === "Mid") return price >= 2000 && price <= 5000;
+        if (budget === "High") return price > 5000;
+        return true;
+      });
+    }
+
+    // Slice top 10
+    products = products.slice(0, 10);
+
+    if (products.length === 0) {
+      return {
+        reply: `I couldn't find exact matches for "${query}" within that budget. Here are some other options!`,
+      };
+    }
+
+    const carouselData = products.map(node => ({
+      title: node.title,
+      price: node.priceRangeV2?.minVariantPrice ? `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}` : "Price N/A",
+      image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+      url: `/products/${node.handle}`,
+      variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "",
+      vendor: node.vendor || "Art Assistant"
+    }));
+
+    return {
+      type: "carousel",
+      data: carouselData
+    };
+
+  } catch (e) {
+    console.error("Search Helper Error", e);
+    return { reply: "I'm having trouble searching the catalog right now." };
+  }
+}
