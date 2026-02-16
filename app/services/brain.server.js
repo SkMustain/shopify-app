@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export const AntigravityBrain = {
 
     async process(text, history = [], admin, apiKey) {
-        console.log("🧠 AntigravityBrain v4.6 (Critical TryCatch Fix) Processing...");
+        console.log("🧠 AntigravityBrain v4.7 (Resilient Mode) Processing...");
         if (!apiKey) {
             return {
                 reply: "I'm currently offline (API Key missing). But I can still search for you!",
@@ -158,12 +158,45 @@ export const AntigravityBrain = {
         } catch (e) { return { collections: "General Art", types: "Canvas" }; }
     },
     async executeShopifySearch(admin, query, maxPrice, color) {
-        let finalQuery = color && !query.includes(color) ? `${query} ${color}` : query;
-        const response = await admin.graphql(`#graphql query ($q: String!) { products(first: 10, query: $q) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`, { variables: { q: finalQuery } });
-        const json = await response.json();
-        let items = json.data?.products?.edges.map(e => e.node) || [];
-        if (maxPrice) items = items.filter(p => parseFloat(p.priceRangeV2.minVariantPrice.amount) <= maxPrice);
-        return items.map(node => ({ title: node.title, price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`, image: node.featuredImage?.url, url: `/products/${node.handle}`, vendor: "Art Assistant" }));
+        let finalQuery = query;
+        if (color && !query.includes(color)) finalQuery = `${query} ${color}`;
+
+        // Handle Empty Query -> "sort_key: BEST_SELLING" or just wildcard?
+        // Shopify 'products' query argument matches keywords. "" matches nothing usually.
+        // We need a different query for ALL products.
+
+        let graphqlQuery = "";
+        let variables = {};
+
+        if (!finalQuery || finalQuery.trim() === "") {
+            // Fetch raw list (Best Sellers / Newest)
+            graphqlQuery = `#graphql query { products(first: 10, sortKey: BEST_SELLING) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
+            variables = {};
+        } else {
+            // Search by keyword
+            graphqlQuery = `#graphql query ($q: String!) { products(first: 10, query: $q) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
+            variables = { q: finalQuery };
+        }
+
+        try {
+            const response = await admin.graphql(graphqlQuery, { variables });
+            const json = await response.json();
+
+            let items = json.data?.products?.edges.map(e => e.node) || [];
+
+            if (maxPrice) items = items.filter(p => parseFloat(p.priceRangeV2.minVariantPrice.amount) <= maxPrice);
+
+            return items.map(node => ({
+                title: node.title,
+                price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
+                image: node.featuredImage?.url,
+                url: `/products/${node.handle}`,
+                vendor: "Art Assistant"
+            }));
+        } catch (e) {
+            console.error("Shopify Search GraphQL Error:", e);
+            return []; // Return empty array instead of throwing
+        }
     },
     async executeVastuQuery(admin, direction) {
         const rules = { "North": { recommendation: "Water/Wealth (Blue, Waterfall)", keywords: "Water Blue" }, "South": { recommendation: "Fire/Fame (Red, Horses)", keywords: "Red Fire" }, "East": { recommendation: "Air/Social (Green, Plants)", keywords: "Green Forest" }, "West": { recommendation: "Gains (White, Gold)", keywords: "White Gold" }, "North-East": { recommendation: "Sacred (Spiritual, Shiva)", keywords: "Shiva Spiritual" } };
