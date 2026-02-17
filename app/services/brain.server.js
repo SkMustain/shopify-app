@@ -90,7 +90,7 @@ export const AntigravityBrain = {
             console.log("🚀 Attempting Gemini 2.0 Flash (Primary)...");
             return await this.runTraceWithRetry(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
-            console.warn("⚠️ Gemini 2.0 Flash Failed. Switching to Pro...", e.message);
+            console.warn("⚠️ Gemini 2.0 Flash Failed. Switching to Lite...", e.message);
 
             // --- ATTEMPT 2: GEMINI 2.0 FLASH LITE (Backup) ---
             try {

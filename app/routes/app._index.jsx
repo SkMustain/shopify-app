@@ -43,12 +43,22 @@ export const action = async ({ request }) => {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
+      console.log("Testing Gemini 2.0 Flash...");
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent("Hello?");
-      const response = await result.response;
-      return { status: "success", message: "API Key Verified! Gemini 2.0 Flash is working. 🚀" };
-    } catch (e) {
-      return { status: "error", message: `Connection Failed: ${e.message}` };
+      await result.response;
+      return { status: "success", message: "✅ Success! Gemini 2.0 Flash is working." };
+    } catch (e1) {
+      console.warn("Primary model failed, trying lite...", e1.message);
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const modelLite = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+        const resultLite = await modelLite.generateContent("Hello?");
+        await resultLite.response;
+        return { status: "success", message: "⚠️ Primary Quota Exceeded, but Backup (Flash Lite) is working! Art Assistant will still function." };
+      } catch (e2) {
+        return { status: "error", message: `❌ All Models Failed. Primary: ${e1.message}. Backup: ${e2.message}` };
+      }
     }
   }
 
