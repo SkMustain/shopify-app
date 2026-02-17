@@ -48,10 +48,10 @@ export const action = async ({ request }) => {
       const openai = new OpenAI({ apiKey });
       const completion = await openai.chat.completions.create({
         messages: [{ role: "system", content: "ping" }],
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
       });
       console.log("OpenAI Test Result:", completion.choices[0]);
-      return { status: "success", message: "✅ Success! OpenAI (gpt-4o-mini) is connected." };
+      return { status: "success", message: "✅ Success! OpenAI (gpt-4o) is connected." };
     } catch (e) {
       return { status: "error", message: `Connection Failed: ${e.message}` };
     }
