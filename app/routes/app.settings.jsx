@@ -1,5 +1,5 @@
 import { json } from "@remix-run/node";
-import { useLoaderData, useActionData, useSubmit, Form } from "@remix-run/react";
+import { useLoaderData, useActionData, useSubmit, Form } from "react-router";
 import { Page, Layout, Card, FormLayout, TextField, Button, Text, Banner } from "@shopify/polaris";
 import { useState, useCallback } from "react";
 import db from "../db.server";
@@ -17,7 +17,7 @@ export const loader = async ({ request }) => {
     // Mask key for display if it exists
     const maskedKey = apiKey ? `${apiKey.slice(0, 4)}...${apiKey.slice(-4)}` : "";
 
-    return json({ apiKey: maskedKey, isSet: !!apiKey });
+    return { apiKey: maskedKey, isSet: !!apiKey };
 };
 
 export const action = async ({ request }) => {
@@ -30,11 +30,11 @@ export const action = async ({ request }) => {
         await db.appSetting.delete({
             where: { key: "GEMINI_API_KEY" }
         });
-        return json({ status: "success", message: "API Key removed globally." });
+        return { status: "success", message: "API Key removed globally." };
     }
 
     if (!apiKey || typeof apiKey !== "string") {
-        return json({ status: "error", message: "Invalid API Key format." });
+        return { status: "error", message: "Invalid API Key format." };
     }
 
     // Upsert the key
@@ -44,7 +44,7 @@ export const action = async ({ request }) => {
         create: { key: "GEMINI_API_KEY", value: apiKey }
     });
 
-    return json({ status: "success", message: "API Key saved successfully! The 'Real AI' is now active." });
+    return { status: "success", message: "API Key saved successfully! The 'Real AI' is now active." };
 };
 
 export default function Settings() {
@@ -71,7 +71,7 @@ export default function Settings() {
                     {actionData?.message && (
                         <Banner
                             title={actionData.status === "success" ? "Success" : "Error"}
-                            status={actionData.status}
+                            status={actionData.status === "success" ? "success" : "critical"}
                             onDismiss={() => { }}
                         >
                             <p>{actionData.message}</p>
@@ -97,7 +97,7 @@ export default function Settings() {
                             />
 
                             <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                                <Button primary onClick={handleSave} disabled={!apiKey && !isDirty}>
+                                <Button variant="primary" onClick={handleSave} disabled={!apiKey && !isDirty}>
                                     Save Key
                                 </Button>
                                 {loaderData.isSet && (
