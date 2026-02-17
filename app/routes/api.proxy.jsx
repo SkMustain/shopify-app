@@ -322,7 +322,7 @@ export const action = async ({ request }) => {
         const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
         // 1. Fetch API Key from DB (Primary) or Env (Falback)
         const output = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
-        const apiKey = output?.value || process.env.GEMINI_API_KEY;
+        const apiKey = (output?.value || process.env.GEMINI_API_KEY || "").trim();
 
         if (!apiKey) {
           console.error("❌ NO API KEY FOUND (DB or Env)");
