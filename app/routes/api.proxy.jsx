@@ -321,7 +321,7 @@ export const action = async ({ request }) => {
         // Default "Brain" handling for random queries
         const apiKeySetting = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
         // 1. Fetch API Key from DB (Primary) or Env (Falback)
-        const output = await db.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
+        const output = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
         const apiKey = output?.value || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
