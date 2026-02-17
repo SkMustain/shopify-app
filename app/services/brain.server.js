@@ -85,17 +85,17 @@ export const AntigravityBrain = {
         `;
 
         // --- ATTEMPT 1: GEMINI 2.0 FLASH (User Choice - Experimental/Quotas) ---
-        // --- ATTEMPT 1: GEMINI 1.5 FLASH (Stable Standard) ---
+        // --- ATTEMPT 1: GEMINI 2.0 FLASH (Confirmed Available) ---
         try {
-            console.log("🚀 Attempting Gemini 1.5 Flash (Primary)...");
-            return await this.runTraceWithRetry(genAI, "gemini-1.5-flash", systemPrompt, tools, history, text, admin);
+            console.log("🚀 Attempting Gemini 2.0 Flash (Primary)...");
+            return await this.runTraceWithRetry(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
         } catch (e) {
-            console.warn("⚠️ Gemini 1.5 Flash Failed. Switching to 1.5 Pro...", e.message);
+            console.warn("⚠️ Gemini 2.0 Flash Failed. Switching to Pro...", e.message);
 
-            // --- ATTEMPT 2: GEMINI 1.5 PRO (High Intelligence Backup) ---
+            // --- ATTEMPT 2: GEMINI 2.0 FLASH LITE (Backup) ---
             try {
-                console.log("🚀 Attempting Gemini 1.5 Pro (Backup)...");
-                return await this.runTraceWithRetry(genAI, "gemini-1.5-pro", systemPrompt, tools, history, text, admin);
+                console.log("🚀 Attempting Gemini 2.0 Flash Lite (Backup)...");
+                return await this.runTraceWithRetry(genAI, "gemini-2.0-flash-lite", systemPrompt, tools, history, text, admin);
             } catch (e2) {
                 console.error("❌ ALL AI Models Failed. Entering RESILIENT MODE.", e2.message);
                 // Fallback to local logic

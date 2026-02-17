@@ -43,10 +43,10 @@ export const action = async ({ request }) => {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent("Hello?");
       const response = await result.response;
-      return { status: "success", message: "API Key Verified! Gemini 1.5 Flash is working. 🚀" };
+      return { status: "success", message: "API Key Verified! Gemini 2.0 Flash is working. 🚀" };
     } catch (e) {
       return { status: "error", message: `Connection Failed: ${e.message}` };
     }
