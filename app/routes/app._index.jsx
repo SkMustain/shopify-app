@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
-import { Page, Layout, Card, BlockStack, Text, Grid, DataMap, Button, TextField, InlineGrid, Box } from "@shopify/polaris";
+import { Page, Layout, Card, BlockStack, Text, Grid, DataMap, Button, TextField, InlineGrid, Box, Banner } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const loader = async ({ request }) => {
   await authenticate.admin(request);
@@ -33,10 +34,27 @@ export const loader = async ({ request }) => {
 export const action = async ({ request }) => {
   await authenticate.admin(request);
   const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  // Handle API Key Test
+  if (intent === "test_key") {
+    const apiKey = formData.get("apiKey");
+    if (!apiKey) return { status: "error", message: "No API Key provided to test." };
+
+    try {
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await model.generateContent("Hello?");
+      const response = await result.response;
+      return { status: "success", message: "API Key Verified! Gemini 1.5 Flash is working. 🚀" };
+    } catch (e) {
+      return { status: "error", message: `Connection Failed: ${e.message}` };
+    }
+  }
 
   // Handle API Key Save
   const apiKey = formData.get("apiKey");
-  if (apiKey !== null) {
+  if (apiKey !== null && !intent) {
     await prisma.appSetting.upsert({
       where: { key: "GEMINI_API_KEY" },
       update: { value: apiKey },
@@ -75,6 +93,13 @@ export default function Index() {
     fetcher.submit({ apiKey: geminiKey }, { method: "POST" });
   };
 
+  const testKey = () => {
+    fetcher.submit({ intent: "test_key", apiKey: geminiKey }, { method: "POST" });
+  };
+
+  const testStatus = fetcher.data?.status;
+  const testMessage = fetcher.data?.message;
+
   const handleDirChange = (dir) => {
     setSelectedDir(dir);
     const conf = configs.find(c => c.direction === dir);
@@ -94,6 +119,33 @@ export default function Index() {
   return (
     <Page title="Art Assistant Dashboard">
       <Layout>
+        {/* API CONFIG SECTION */}
+        <Layout.Section>
+          <Card>
+            <BlockStack gap="400">
+              <Text as="h2" variant="headingMd">Vision AI Configuration</Text>
+
+              {testStatus === "success" && <Banner tone="success">{testMessage}</Banner>}
+              {testStatus === "error" && <Banner tone="critical">{testMessage}</Banner>}
+
+              <InlineGrid columns={["twoThirds", "oneThird"]} gap="400">
+                <TextField
+                  label="Gemini API Key"
+                  type="password"
+                  value={geminiKey}
+                  onChange={setGeminiKey}
+                  helpText="Get a key from Google AI Studio to enable real image analysis."
+                  autoComplete="off"
+                />
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
+                  <Button onClick={saveKey} loading={fetcher.state === "submitting" && !fetcher.formData?.get("intent")}>Save Key</Button>
+                  <Button onClick={testKey} loading={fetcher.state === "submitting" && fetcher.formData?.get("intent") === "test_key"}>Test Connection</Button>
+                </div>
+              </InlineGrid>
+            </BlockStack>
+          </Card>
+        </Layout.Section>
+
         {/* ANALYTICS SECTION */}
         <Layout.Section>
           <Card>
@@ -129,29 +181,6 @@ export default function Index() {
             </BlockStack>
           </Card>
         </Layout.Section>
-
-        {/* API CONFIG SECTION */}
-        <Layout.Section>
-          <Card>
-            <BlockStack gap="400">
-              <Text as="h2" variant="headingMd">Vision AI Configuration</Text>
-              <InlineGrid columns={["twoThirds", "oneThird"]} gap="400">
-                <TextField
-                  label="Gemini API Key"
-                  type="password"
-                  value={geminiKey}
-                  onChange={setGeminiKey}
-                  helpText="Get a key from Google AI Studio to enable real image analysis."
-                  autoComplete="off"
-                />
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <Button onClick={saveKey} loading={fetcher.state === "submitting"}>Save Key</Button>
-                </div>
-              </InlineGrid>
-            </BlockStack>
-          </Card>
-        </Layout.Section>
-
 
       </Layout>
     </Page>
