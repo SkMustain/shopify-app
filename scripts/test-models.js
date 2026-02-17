@@ -1,7 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // User's key from chat
-const apiKey = "AIzaSyA3rEHJWmZ73V9VUUhlxlhXuV_VSlp1F_Y";
+import dotenv from "dotenv";
+dotenv.config();
+const apiKey = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenerativeAI(apiKey);
 
 async function testConnection() {

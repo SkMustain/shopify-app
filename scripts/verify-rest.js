@@ -1,4 +1,11 @@
-const apiKey = "AIzaSyBCPhHkVY-cYGS8EudQtqs2brbFzwBqFBM";
+import dotenv from "dotenv";
+dotenv.config();
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+    console.error("❌ Error: GEMINI_API_KEY not found in .env");
+    process.exit(1);
+}
 const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
 async function testRest() {
