@@ -140,11 +140,11 @@ export default function Index() {
 
               <InlineGrid columns={["twoThirds", "oneThird"]} gap="400">
                 <TextField
-                  label="Gemini API Key"
+                  label="OpenAI API Key"
                   type="password"
                   value={geminiKey}
                   onChange={setGeminiKey}
-                  helpText="Get a key from Google AI Studio to enable real image analysis."
+                  helpText="Enter your OpenAI Key (starts with sk-...) to enable the Art Assistant."
                   autoComplete="off"
                 />
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
