@@ -45,7 +45,7 @@ export const action = async ({ request }) => {
       };
     }
 
-    // --- 2. FLOW 1: VISUAL SEARCH (Upload -> Gemini -> Search) ---
+    // --- 2. FLOW 1: VISUAL SEARCH (Upload -> Colors -> Theme -> Search) ---
     else if (payloadTag?.startsWith("FLOW_VISUAL:") || (userImage && !payloadTag)) {
       const step = payloadTag ? payloadTag.split(":")[1] : "HANDLE_IMAGE";
 
@@ -65,10 +65,11 @@ export const action = async ({ request }) => {
           responseData = { reply: "I need a Gemini API Key to analyze images. Please add it in the Admin Dashboard." };
         } else {
           try {
-            // Save to DB (optional, but good for gallery)
-            await prisma.customerImage.create({
-              data: { imageData: userImage, analysisResult: "Analyzed" }
+            // Save to DB to persist analysis for later steps
+            const newImg = await prisma.customerImage.create({
+              data: { imageData: userImage.substring(0, 100) + "...", analysisResult: "Analyzing" }
             });
+            const imageId = newImg.id.toString();
 
             const { GoogleGenerativeAI } = await import("@google/generative-ai");
             const genAI = new GoogleGenerativeAI(apiKey);
@@ -82,24 +83,85 @@ export const action = async ({ request }) => {
               inlineData: { data: base64Data, mimeType }
             };
 
-            const prompt = `Analyze this room. You are an expert interior designer. Suggest the best art style for this wall. Output ONLY a concise 3-5 word search query representing the best art for it, using these tags if applicable: Abstract, Canvas, Floral, Modern, Cityscape, Nature, Buddha, Vastu. Example: "Modern Blue Abstract Canvas". Do NOT add any other text.`;
+            const prompt = `You are an expert interior designer viewing a room. Return strictly a JSON object with two keys:
+1. "description": A concise 1-sentence description of the room (e.g. "a modern living room with beige tones").
+2. "suggested_colors": An array of exactly 3 descriptive color palettes that would perfectly complement this room (e.g. ["Warm Golds", "Vibrant Blues", "Neutral Earth Tones"]).
+Do not include markdown blocks or any other text. Just the raw JSON.`;
 
-            console.log("Calling Gemini Vision...");
+            console.log("Calling Gemini Vision for deep analysis...");
             const result = await model.generateContent([prompt, imagePart]);
-            const query = result.response.text().trim().replace(/['"]/g, '');
-            console.log("Gemini Vision returned query:", query);
+            let responseText = result.response.text().trim();
+            if (responseText.startsWith("```json")) {
+              responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+            }
+            const analysis = JSON.parse(responseText);
 
-            const searchResult = await executeSearch(admin, query, {});
+            console.log("Vision Analysis successful:", analysis);
+
+            await prisma.customerImage.update({
+              where: { id: parseInt(imageId) },
+              data: { analysisResult: analysis.description }
+            });
+
+            const c1 = analysis.suggested_colors[0] || "Warm Tones";
+            const c2 = analysis.suggested_colors[1] || "Cool Blues";
+            const c3 = analysis.suggested_colors[2] || "Neutral";
+
             responseData = {
-              reply: `I see your room! Based on the vibe, I found these perfect matches for you. ✨\n\n*(Curated for: ${query})*`,
-              type: "carousel",
-              data: searchResult.data || []
+              reply: `I see ${analysis.description}! ✨\n\nWhat color palette would you prefer for the painting?`,
+              type: "actions",
+              data: [
+                { label: `🎨 ${c1}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c1}` },
+                { label: `🎨 ${c2}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c2}` },
+                { label: `🎨 ${c3}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c3}` },
+                { label: "Surprise Me", payload: `FLOW_VISUAL:COLOR:${imageId}:Surprise` }
+              ]
             };
           } catch (e) {
             console.error("Vision Error:", e);
-            responseData = { reply: "Sorry, I had trouble analyzing the image right now. Let's try picking a theme instead.", type: "actions", data: [{ label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }] };
+            // Fallback options if Vision fails (e.g. quota, parsing error)
+            responseData = {
+              reply: "I received your photo! What color preference do you have for the artwork?",
+              type: "actions",
+              data: [
+                { label: "Warm & Cozy", payload: "FLOW_VISUAL:COLOR:0:Warm" },
+                { label: "Cool & Calming", payload: "FLOW_VISUAL:COLOR:0:Blue" },
+                { label: "Bold & Vibrant", payload: "FLOW_VISUAL:COLOR:0:Colorful" },
+                { label: "Neutral & Minimal", payload: "FLOW_VISUAL:COLOR:0:Neutral" }
+              ]
+            };
           }
         }
+      }
+      else if (step === "COLOR") {
+        const imgId = payloadTag.split(":")[2];
+        const color = payloadTag.split(":")[3];
+
+        responseData = {
+          reply: `Great choice! What theme of painting do you like best?`,
+          type: "actions",
+          data: [
+            { label: "Modern Abstract", payload: `FLOW_VISUAL:THEME:${imgId}:${color}:Abstract` },
+            { label: "Nature & Landscape", payload: `FLOW_VISUAL:THEME:${imgId}:${color}:Nature` },
+            { label: "Spiritual / Devotional", payload: `FLOW_VISUAL:THEME:${imgId}:${color}:Spiritual` },
+            { label: "Cityscape / Travel", payload: `FLOW_VISUAL:THEME:${imgId}:${color}:Cityscape` }
+          ]
+        };
+      }
+      else if (step === "THEME") {
+        const parts = payloadTag.split(":");
+        const color = parts[3];
+        const theme = parts[4];
+
+        const cleanColor = color === "Surprise" ? "" : color.split(" ")[0];
+        const query = `${theme} ${cleanColor}`.trim();
+
+        const searchResult = await executeSearch(admin, query, {});
+        responseData = {
+          reply: `Here are the perfect matches for your room! ✨`,
+          type: "carousel",
+          data: searchResult.data || []
+        };
       }
     }
 
