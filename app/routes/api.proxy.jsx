@@ -90,9 +90,12 @@ export const action = async ({ request }) => {
               inlineData: { data: base64Data, mimeType }
             };
 
-            const prompt = `You are an expert interior designer viewing a room. Return strictly a JSON object with two keys:
-1. "description": A concise 1-sentence description of the room (e.g. "a modern living room with beige tones").
-2. "suggested_colors": An array of exactly 3 descriptive color palettes that would perfectly complement this room (e.g. ["Warm Golds", "Vibrant Blues", "Neutral Earth Tones"]).
+            const tagsList = "Abstract, Abstract Flower, Abstract Ganesha, adiyogi painting, adventure painting, aesthetic painting, African Drummers, Ancient Ruins, architecture wall decor, artistic painting, autumn leaf painting, baby portrait painting, bharatnatyam painting, bird artwork, Black, Blue, boat canvas, bright color painting, Brown, buddha painting, buddhist painting, Burj Khalifa, calm sea painting, Canvas Painting, Cityscape, classical painting, close-up abstract, Colorful, Couple Name Plate, cyberpunk, dancing girl painting, dark art, divine wall art, dream art painting, Dystopian Cityscape, Emotional Harmony Flow, Energetic, European city, Floral, forest landscape painting, Futuristic, ganesh painting, Gold, Green, grounded environment, Heart Wall Painting, historical painting, horizon painting, indian art painting, japanese art, Kids Room Painting, krishna painting, landscape painting, London, lord shiva painting, love painting, mahadev painting, Minimalism, Modern, Mountain, Musicians Painting, mystical wall art, nature, Nautical, Navy, Nostalgia, ocean painting, Orange, peaceful nature, Personalized Wall Plate, Pink, pooja room painting, Portrait, Purple, rainbow painting, Red, Religious Painting, Romantic, Round Name Plate, Scenery, Serenity, Seven Horses, Silver, spiritual painting, Sunset, temple painting, traditional indian art, Tranquility, travel art, tree painting, Tribal, urban street art, vastu painting, Venice, Vintage, wall art, Water Fall, Watercolor, White, wild life painting, woman painting, Yellow";
+
+            const prompt = `You are an expert interior designer. Analyze this room and strictly return a JSON object with:
+1. "description": A 1-sentence description of the room.
+2. "initial_search_query": Select 2-3 EXACT tags from this list that best fit the room's vibe to query my store instantly: [${tagsList}].
+3. "suggested_colors": Exactly 3 color palettes for follow-up refinement (e.g. ["Warm Golds", "Vibrant Blues", "Neutral Earth Tones"]).
 Do not include markdown blocks or any other text. Just the raw JSON.`;
 
             console.log("Calling Gemini Vision for deep analysis...");
@@ -114,10 +117,13 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
             const c2 = analysis.suggested_colors[1] || "Cool Blues";
             const c3 = analysis.suggested_colors[2] || "Neutral";
 
+            // Immediately search using the suggested tags
+            const initialSearch = await executeSearch(admin, analysis.initial_search_query, {});
+
             responseData = {
-              reply: `I see ${analysis.description}! ✨\n\nWhat color palette would you prefer for the painting?`,
-              type: "actions",
-              data: [
+              reply: `I see ${analysis.description}! ✨\n\nI've placed some initial suggestions in the sidebar based on my analysis of your room. To refine these results perfectly, what color palette would you prefer?`,
+              carousel: initialSearch.data || [],
+              actions: [
                 { label: `🎨 ${c1}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c1}` },
                 { label: `🎨 ${c2}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c2}` },
                 { label: `🎨 ${c3}`, payload: `FLOW_VISUAL:COLOR:${imageId}:${c3}` },

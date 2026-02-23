@@ -691,14 +691,21 @@
               
               if(data.reply) addMsg(data.reply, 'bot');
               
-              if(data.type === 'carousel' && data.data && data.data.length > 0) {
-                  // SPLIT LOGIC
-                  const [hero, ...rest] = data.data;
-                  addHeroCard(hero); // Top result in chat
-                  updateSidebar(rest); // Rest in sidebar
-                  addMsg("I've highlighted the top match above, and added more options to the sidebar.", 'bot');
-              } else if (data.data && data.type==='actions') {
-                  addActions(data.data);
+              if(data.type === 'carousel' || data.carousel) {
+                  const carouselData = data.carousel || (data.type === 'carousel' ? data.data : []);
+                  if (carouselData && carouselData.length > 0) {
+                      const [hero, ...rest] = carouselData;
+                      addHeroCard(hero); // Top result in chat
+                      updateSidebar(rest); // Rest in sidebar
+                      addMsg("I've highlighted the top match above, and added more options to the sidebar.", 'bot');
+                  }
+              }
+              
+              if (data.actions || data.type === 'actions') {
+                  const actionsData = data.actions || (data.type === 'actions' ? data.data : []);
+                  if (actionsData && actionsData.length > 0) {
+                      addActions(actionsData);
+                  }
               }
 
           } catch(e) {
@@ -741,7 +748,6 @@
       function showQuickActions() {
           addActions([
             { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
-            { label: "🎨 I Have Custom Requirements", payload: "FLOW_CUSTOM:START" },
             { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
           ]);
       }
