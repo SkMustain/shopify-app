@@ -163,6 +163,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       }
       else if (step === "THEME") {
         const parts = payloadTag.split(":");
+        const imgId = parts[2];
         const color = parts[3];
         const theme = parts[4];
 
@@ -171,9 +172,46 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 
         const searchResult = await executeSearch(admin, query, {});
         responseData = {
-          reply: `Here are the perfect matches for your room! ✨`,
-          type: "carousel",
-          data: searchResult.data || []
+          reply: `Here are the perfect matches for your room! ✨\n\nHow would you like to refine these results?`,
+          carousel: searchResult.data || [],
+          actions: [
+            { label: "Vastu Friendly 🧭", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:VASTU` },
+            { label: "Under ₹2000 💰", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:BUDGET_LOW` },
+            { label: "Premium/Luxury ✨", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:BUDGET_HIGH` },
+            { label: "Change Theme 🎨", payload: `FLOW_VISUAL:COLOR:${imgId}:${color}` }
+          ]
+        };
+      }
+      else if (step === "REFINE") {
+        const parts = payloadTag.split(":");
+        const imgId = parts[2];
+        const color = parts[3];
+        const theme = parts[4];
+        const refinement = parts[5];
+
+        const cleanColor = color === "Surprise" ? "" : color.split(" ")[0];
+        let query = `${theme} ${cleanColor}`.trim();
+        let budgetFilter = null;
+
+        if (refinement === "VASTU") {
+          query += " Vastu";
+        } else if (refinement === "BUDGET_LOW") {
+          budgetFilter = "Low";
+        } else if (refinement === "BUDGET_HIGH") {
+          budgetFilter = "High";
+        }
+
+        const searchResult = await executeSearch(admin, query, { budget: budgetFilter });
+
+        responseData = {
+          reply: `I've updated your curation! ✨\n\nWhat other adjustments would you like to make?`,
+          carousel: searchResult.data || [],
+          actions: [
+            { label: "Add Vastu Magic 🧭", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:VASTU` },
+            { label: "Change Theme 🎨", payload: `FLOW_VISUAL:COLOR:${imgId}:${color}` },
+            { label: "Explore Budget Options 💰", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:BUDGET_LOW` },
+            { label: "Start Over 🏠", payload: `RESET_FLOW` }
+          ]
         };
       }
     }
@@ -224,9 +262,39 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         const query = parts[2];
         const searchResult = await executeSearch(admin, query, {});
         responseData = {
-          reply: `Here are our best picks for you! ✨\n\n**Confidence Booster:** 4.8★ Rated by 1,200+ customers!`,
-          type: "carousel",
-          data: searchResult.data || []
+          reply: `Here are our best picks for you! ✨\n\n**Confidence Booster:** 4.8★ Rated by 1,200+ customers!\n\nTo help you further, what else are you looking for?`,
+          carousel: searchResult.data || [],
+          actions: [
+            { label: "Needs More Luxury ✨", payload: `FLOW_GUIDE:REFINE:${query}:LUXURY` },
+            { label: "Needs More Calm 🌿", payload: `FLOW_GUIDE:REFINE:${query}:CALM` },
+            { label: "Under ₹5000 💰", payload: `FLOW_GUIDE:REFINE:${query}:BUDGET` },
+            { label: "Start Over 🏠", payload: "RESET_FLOW" }
+          ]
+        };
+      }
+      else if (step === "REFINE") {
+        const query = parts[2];
+        const refinement = parts[3];
+
+        let newQuery = query;
+        let budgetFilter = null;
+
+        if (refinement === "LUXURY") newQuery += " Luxury Gold Premium";
+        if (refinement === "CALM") newQuery += " Nature Peace Zen";
+        if (refinement === "VASTU") newQuery += " Vastu";
+        if (refinement === "COLORFUL") newQuery += " Colorful Vibrant";
+        if (refinement === "BUDGET") budgetFilter = "Mid";
+
+        const searchResult = await executeSearch(admin, newQuery, { budget: budgetFilter });
+        responseData = {
+          reply: `Perfect! I've refined the results for you. ✨\n\nShall we keep tweaking?`,
+          carousel: searchResult.data || [],
+          actions: [
+            { label: "Add Vastu Magic 🧭", payload: `FLOW_GUIDE:REFINE:${newQuery}:VASTU` },
+            { label: "Make it more Colorful 🌈", payload: `FLOW_GUIDE:REFINE:${newQuery}:COLORFUL` },
+            { label: "Show Different Styles", payload: `FLOW_GUIDE:OTHERS` },
+            { label: "Start Over 🏠", payload: "RESET_FLOW" }
+          ]
         };
       }
     }
