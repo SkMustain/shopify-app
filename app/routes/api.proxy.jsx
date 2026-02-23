@@ -19,9 +19,16 @@ export const action = async ({ request }) => {
     }
 
     const payload = await request.json();
-    const userMessage = (payload.message || "").trim();
+    let userMessage = (payload.message || "").trim();
     const userImage = payload.image; // Base64 image
-    const payloadTag = payload.payload; // From button clicks
+    let payloadTag = payload.payload; // From button clicks
+
+    // FIX: Frontend sends payload strings (e.g. "FLOW_VISUAL:START") inside the `message` field.
+    // We must extract it here so our state machine works.
+    if (!payloadTag && userMessage.startsWith("FLOW_")) {
+      payloadTag = userMessage;
+      userMessage = ""; // Clear message so it acts purely as a payload event
+    }
 
     // Import Prisma & Services
     const { default: prisma } = await import("../db.server");
