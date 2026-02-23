@@ -26,7 +26,7 @@ export const loader = async ({ request }) => {
   const configs = await prisma.vastuConfig.findMany();
 
   // 4. Fetch Settings
-  const apiKey = await prisma.appSetting.findUnique({ where: { key: "OPENAI_API_KEY" } });
+  const apiKey = await prisma.appSetting.findUnique({ where: { key: "GEMINI_API_KEY" } });
 
   return { directionCounts, images, configs, apiKey: apiKey?.value || "" };
 };
@@ -42,18 +42,23 @@ export const action = async ({ request }) => {
     if (!apiKey) return { status: "error", message: "No API Key provided to test." };
 
     try {
-      console.log("Testing OpenAI Key...");
-      // Dynamic import to avoid build issues if package missing (though it shouldn't be)
-      const { OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey });
-      const completion = await openai.chat.completions.create({
-        messages: [{ role: "system", content: "ping" }],
-        model: "gpt-4o",
-      });
-      console.log("OpenAI Test Result:", completion.choices[0]);
-      return { status: "success", message: "✅ Success! OpenAI (gpt-4o) is connected." };
-    } catch (e) {
-      return { status: "error", message: `Connection Failed: ${e.message}` };
+      const genAI = new GoogleGenerativeAI(apiKey);
+      console.log("Testing Gemini 2.0 Flash...");
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      const result = await model.generateContent("Hello?");
+      await result.response;
+      return { status: "success", message: "✅ Success! Gemini 2.0 Flash is working." };
+    } catch (e1) {
+      console.warn("Primary model failed, trying lite...", e1.message);
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const modelLite = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
+        const resultLite = await modelLite.generateContent("Hello?");
+        await resultLite.response;
+        return { status: "success", message: "⚠️ Primary Quota Exceeded, but Backup (Flash Lite) is working!" };
+      } catch (e2) {
+        return { status: "error", message: `❌ All Models Failed. Primary: ${e1.message}. Backup: ${e2.message}` };
+      }
     }
   }
 
@@ -61,9 +66,9 @@ export const action = async ({ request }) => {
   const apiKey = formData.get("apiKey");
   if (apiKey !== null && !intent) {
     await prisma.appSetting.upsert({
-      where: { key: "OPENAI_API_KEY" },
+      where: { key: "GEMINI_API_KEY" },
       update: { value: apiKey },
-      create: { key: "OPENAI_API_KEY", value: apiKey }
+      create: { key: "GEMINI_API_KEY", value: apiKey }
     });
     return { status: "saved_key" };
   }
@@ -135,11 +140,11 @@ export default function Index() {
 
               <InlineGrid columns={["twoThirds", "oneThird"]} gap="400">
                 <TextField
-                  label="OpenAI API Key"
+                  label="Gemini API Key"
                   type="password"
                   value={geminiKey}
                   onChange={setGeminiKey}
-                  helpText="Enter your OpenAI Key (starts with sk-...) to enable the Art Assistant."
+                  helpText="Enter your Gemini Key to enable the Art Assistant."
                   autoComplete="off"
                 />
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
