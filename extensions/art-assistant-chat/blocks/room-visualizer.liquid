@@ -1,7 +1,8 @@
 <div class="art-visualizer-container">
   {% if product.featured_image %}
     <button id="visualizer-trigger-{{ block.id }}" class="visualizer-btn" type="button">
-      🖼️ View in your room
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      <span>View in Your Room</span>
     </button>
 
     <!-- Modal Overlay -->
@@ -13,12 +14,13 @@
       
       <div class="visualizer-body">
         
-        <div class="visualizer-controls">
+        <div class="visualizer-controls" id="visualizer-controls-{{ block.id }}">
            <label for="visualizer-upload-{{ block.id }}" class="upload-label">
-             📸 Upload Your Room Photo
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+             Upload Wall Photo
            </label>
            <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
-           <p class="instructions">Pinch or scroll to resize. Drag to position.</p>
+           <p class="instructions hidden" id="viz-inst-{{ block.id }}">Pinch or drag corner to resize. Drag image to position.</p>
         </div>
 
         <!-- The Interactive Canvas Area -->
@@ -31,11 +33,19 @@
              <img src="{{ product.featured_image | img_url: '1024x' }}" alt="{{ product.title }}">
              <div class="resize-handle"></div>
            </div>
+           
+           <div class="empty-state" id="empty-state-{{ block.id }}">
+             <div class="empty-icon">📸</div>
+             <p>Upload a photo of your room to see this painting on your wall.</p>
+           </div>
         </div>
       </div>
+      
+      <div class="visualizer-footer hidden" id="viz-footer-{{ block.id }}">
+        <button class="viz-btn-outline" id="viz-reupload-{{ block.id }}">Change Photo</button>
+        <button class="viz-btn-primary" id="viz-done-{{ block.id }}">Looks Great!</button>
+      </div>
     </div>
-  {% else %}
-    <p><em>Room Visualizer: This product has no image.</em></p>
   {% endif %}
 </div>
 
@@ -43,62 +53,68 @@
   /* Button Styles */
   .visualizer-btn {
     width: 100%;
-    padding: 12px 24px;
+    padding: 14px 24px;
     background: #000;
     color: #fff;
     border: none;
-    border-radius: 8px;
+    border-radius: 50px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
-    margin: 15px 0;
-    transition: all 0.3s ease;
+    margin: 20px 0;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   }
   .visualizer-btn:hover {
-    background: #333;
+    background: #222;
     transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
   }
+  .visualizer-btn svg { width: 22px; height: 22px; }
 
   /* Modal Styles */
   .visualizer-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.9);
+    background: #000; /* Deep black for premium feel */
     z-index: 999999;
     display: flex;
     flex-direction: column;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    animation: vizFadeIn 0.3s ease-out forwards;
   }
-  .visualizer-modal.hidden {
-    display: none !important;
-  }
+  .visualizer-modal.hidden { display: none !important; }
+
+  @keyframes vizFadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
   /* Header */
   .visualizer-header {
-    background: #fff;
-    padding: 15px 20px;
+    background: rgba(20,20,20,0.95);
+    backdrop-filter: blur(10px);
+    padding: 18px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: white;
   }
-  .visualizer-header h2 {
-    margin: 0;
-    font-size: 1.2rem;
-    color: #000;
-  }
+  .visualizer-header h2 { margin: 0; font-size: 1.1rem; font-weight: 500; letter-spacing: 0.5px; }
   .close-btn {
-    background: none;
+    background: rgba(255,255,255,0.1);
     border: none;
-    font-size: 28px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    font-size: 20px;
     cursor: pointer;
-    line-height: 1;
-    color: #000;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
   }
+  .close-btn:hover { background: rgba(255,255,255,0.2); }
 
   /* Body & Controls */
   .visualizer-body {
@@ -106,44 +122,63 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
   }
   .visualizer-controls {
-    padding: 15px;
-    background: rgba(25, 25, 25, 0.9);
+    position: absolute;
+    top: 20px;
+    left: 0; right: 0;
+    z-index: 10;
     text-align: center;
-    color: #fff;
+    pointer-events: none; /* Let clicks pass through if empty */
   }
   .upload-label {
-    display: inline-block;
-    padding: 10px 20px;
-    background: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: rgba(255,255,255,0.95);
     color: #000;
-    border-radius: 20px;
-    font-weight: bold;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    transition: transform 0.2s;
   }
-  .instructions {
-    margin: 10px 0 0 0;
-    font-size: 0.9em;
-    color: #ccc;
-  }
+  .upload-label:active { transform: scale(0.95); }
+  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.5); padding: 6px 16px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
   /* Canvas Area */
   .visualizer-canvas {
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: #222;
+    background: #111;
     display: flex;
     justify-content: center;
     align-items: center;
+    touch-action: none !important; /* CRITICAL: Prevent Safari pull-to-refresh & scrolling */
   }
+  .empty-state {
+    text-align: center;
+    color: rgba(255,255,255,0.5);
+    max-width: 300px;
+    padding: 0 20px;
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 15px; opacity: 0.5; }
+  .empty-state p { line-height: 1.5; font-size: 15px; margin: 0; }
+  
   .room-bg {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    pointer-events: none; /* Let drag events pass through to wrapper */
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
   }
+  .room-bg:not(.hidden) { opacity: 1; display: block; }
   
   /* Draggable Art Object */
   .draggable-art {
@@ -151,43 +186,77 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 250px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    width: 200px; /* Base mobile size */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.1);
     cursor: grab;
-    touch-action: none; /* Important for mobile dragging */
+    touch-action: none !important; 
+    transition: box-shadow 0.2s;
   }
-  .draggable-art:active {
+  @media(min-width:768px){ .draggable-art { width: 350px; } }
+  
+  .draggable-art.dragging {
     cursor: grabbing;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 0 2px rgba(255,255,255,0.3);
+    z-index: 100;
   }
   .draggable-art img {
     width: 100%;
     height: auto;
     display: block;
-    outline: 2px solid rgba(255,255,255,0.8);
-    outline-offset: -2px;
+    pointer-events: none; /* Prevents ghost dragging natively */
   }
   
-  /* Resize Handle (Bottom Right) */
+  /* Premium Resize Handle */
   .resize-handle {
     position: absolute;
-    bottom: -15px;
-    right: -15px;
-    width: 30px;
-    height: 30px;
-    background: #fff;
+    bottom: -12px;
+    right: -12px;
+    width: 34px;
+    height: 34px;
+    background: white;
     border-radius: 50%;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     cursor: se-resize;
     display: flex;
     justify-content: center;
     align-items: center;
+    opacity: 0.8;
+    transition: opacity 0.2s, transform 0.2s;
   }
+  .draggable-art:hover .resize-handle { opacity: 1; transform: scale(1.1); }
   .resize-handle::after {
-    content: "↕";
-    transform: rotate(-45deg);
-    font-size: 14px;
-    color: #000;
+    content: ""; /* Use custom SVG arrow instead of text for premium look */
+    width: 14px; height: 14px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='9' y1='15' x2='21' y2='3'%3E%3C/line%3E%3Cpolyline points='9 21 3 21 3 15'%3E%3C/polyline%3E%3Cline x1='21' y1='3' x2='3' y2='21'%3E%3C/line%3E%3C/svg%3E");
+    background-size: cover;
   }
+
+  /* Footer Actions */
+  .visualizer-footer {
+    background: rgba(20,20,20,0.95);
+    backdrop-filter: blur(10px);
+    padding: 15px 20px;
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: env(safe-area-inset-bottom, 20px); 
+  }
+  .visualizer-footer button {
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    flex: 1;
+    max-width: 200px;
+    transition: all 0.2s;
+  }
+  .viz-btn-outline { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.3); }
+  .viz-btn-outline:active { background: rgba(255,255,255,0.1); }
+  .viz-btn-primary { background: white; color: black; border: none; }
+  .viz-btn-primary:active { transform: scale(0.96); }
+
 </style>
 
 <script>
@@ -205,21 +274,38 @@ document.addEventListener("DOMContentLoaded", () => {
     const artWrapper = document.getElementById(`draggable-art-${blockId}`);
     const canvasArea = document.getElementById(`visualizer-canvas-${blockId}`);
     const resizeHandle = artWrapper.querySelector('.resize-handle');
+    
+    // UI States
+    const emptyState = document.getElementById(`empty-state-${blockId}`);
+    const instructions = document.getElementById(`viz-inst-${blockId}`);
+    const topControls = document.getElementById(`visualizer-controls-${blockId}`);
+    const footer = document.getElementById(`viz-footer-${blockId}`);
+    const reuploadBtn = document.getElementById(`viz-reupload-${blockId}`);
+    const doneBtn = document.getElementById(`viz-done-${blockId}`);
 
-    if (!triggerBtn) return; // Exit if no product image
+    if (!triggerBtn) return;
 
-    // 1. Open / Close Modal
+    // --- Modal Management ---
     triggerBtn.addEventListener('click', () => {
         modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; // Stop background scrolling
+        // Prevent all background scrolling/bouncing on iOS
+        document.body.style.overflow = 'hidden'; 
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
     });
 
-    closeBtn.addEventListener('click', () => {
+    const closeModal = () => {
         modal.classList.add('hidden');
+        document.body.style.position = '';
         document.body.style.overflow = '';
-    });
+        document.body.style.width = '';
+    };
 
-    // 2. Handle Image Upload
+    closeBtn.addEventListener('click', closeModal);
+    doneBtn.addEventListener('click', closeModal);
+    reuploadBtn.addEventListener('click', () => uploadInput.click());
+
+    // --- Image Upload ---
     uploadInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -228,118 +314,172 @@ document.addEventListener("DOMContentLoaded", () => {
                 bgImg.src = ev.target.result;
                 bgImg.classList.remove('hidden');
                 artWrapper.classList.remove('hidden');
+                emptyState.style.display = 'none';
                 
-                // Center the art initially
+                // Switch UI Modes
+                topControls.querySelector('.upload-label').style.display = 'none';
+                instructions.classList.remove('hidden');
+                footer.classList.remove('hidden');
+                
+                // Reset Art Position to Center Center
                 artWrapper.style.left = '50%';
                 artWrapper.style.top = '50%';
+                artWrapper.style.transform = 'translate(-50%, -50%)'; // Ensure transform is intact
             };
             reader.readAsDataURL(file);
         }
     });
 
-    // 3. Dragging Logic (Mouse & Touch)
+    // --- PREMIUM INTERACTION LOGIC (Drag & Pinch) ---
+    // We must track state carefully to allow multi-touch (pinch to zoom) and single touch (drag)
+    
     let isDragging = false;
-    let startX, startY;
-    let startLeft, startTop;
+    let isResizing = false;
+    
+    // Drag state
+    let startX, startY, initialLeft, initialTop;
+    
+    // Pinch to Zoom state
+    let initialDistance = 0;
+    let initialWidth = 0;
 
-    const startDrag = (e) => {
-        // Prevent drag on resize handle
-        if (e.target === resizeHandle) return;
+    // Utility to get distance between two touch points
+    const getDistance = (touches) => {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+
+    // Prevent default scroll on canvas entirely
+    canvasArea.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+    // --- 1. MOUSE / SINGLE TOUCH DRAGGING ---
+    const handleDragStart = (e) => {
+        if (e.target === resizeHandle || e.touches?.length > 1) return; // Let pinch or resize handle logic run
         
         isDragging = true;
+        artWrapper.classList.add('dragging');
+        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
         startX = clientX;
         startY = clientY;
         
-        // Get absolute pixel position of the art wrapper center (transform translate isn't easily readable)
-        // Instead of parsing transform, we change coordinates to be anchored pixel-based on first click
+        // Compute offset manually since we are using translate(-50%, -50%)
+        // The read style.left is a percentage or pixel, let's normalize it to pixels to avoid jumping
         const rect = artWrapper.getBoundingClientRect();
-        const canvasRect = canvasArea.getBoundingClientRect();
+        const parentRect = canvasArea.getBoundingClientRect();
         
-        // Calculate offset from canvas area
-        startLeft = rect.left - canvasRect.left + (rect.width/2);
-        startTop = rect.top - canvasRect.top + (rect.height/2);
+        // Exact pixel center of the art wrapper relative to canvas
+        initialLeft = rect.left - parentRect.left + (rect.width / 2);
+        initialTop = rect.top - parentRect.top + (rect.height / 2);
         
-        // Switch to absolute positioning so it doesn't jump
-        artWrapper.style.left = `${startLeft}px`;
-        artWrapper.style.top = `${startTop}px`;
+        // Hard set pixel values so math is easy and jump-free
+        artWrapper.style.left = `${initialLeft}px`;
+        artWrapper.style.top = `${initialTop}px`;
         
-        e.preventDefault(); // Stop scrolling on mobile
+        e.preventDefault(); // Stop text selection
     };
 
-    const doDrag = (e) => {
+    const handleDragMove = (e) => {
         if (!isDragging) return;
+        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
         const deltaX = clientX - startX;
         const deltaY = clientY - startY;
         
-        artWrapper.style.left = `${startLeft + deltaX}px`;
-        artWrapper.style.top = `${startTop + deltaY}px`;
+        // Apply deltas directly to pixel origins
+        artWrapper.style.left = `${initialLeft + deltaX}px`;
+        artWrapper.style.top = `${initialTop + deltaY}px`;
     };
 
-    const stopDrag = () => {
+    const handleDragEnd = () => {
         isDragging = false;
+        artWrapper.classList.remove('dragging');
     };
 
-    artWrapper.addEventListener('mousedown', startDrag);
-    artWrapper.addEventListener('touchstart', startDrag, {passive: false});
+    // Bind Drag
+    artWrapper.addEventListener('mousedown', handleDragStart);
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
     
-    document.addEventListener('mousemove', doDrag);
-    document.addEventListener('touchmove', doDrag, {passive: false});
-    
-    document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchend', stopDrag);
+    artWrapper.addEventListener('touchstart', handleDragStart, { passive: false });
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
 
-    // 4. Resizing Logic (Mouse & Touch on Handle)
-    let isResizing = false;
-    let startWidth;
-
-    const startResize = (e) => {
+    // --- 2. BOTTOM CORNER RESIZE HANDLE ---
+    const handleResizeStart = (e) => {
+        e.stopPropagation(); // Stop drag event from firing
         isResizing = true;
-        e.stopPropagation(); // Don't trigger drag
-        e.preventDefault();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         startX = clientX;
-        startWidth = artWrapper.offsetWidth;
+        initialWidth = artWrapper.offsetWidth;
+        
+        e.preventDefault();
     };
 
-    const doResize = (e) => {
+    const handleResizeMove = (e) => {
         if (!isResizing) return;
+        
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const deltaX = clientX - startX;
         
-        // Because handle is on the right, dragging right increases width
-        let newWidth = startWidth + deltaX;
-        
-        // Add min/max limits
-        if (newWidth < 50) newWidth = 50;
-        if (newWidth > window.innerWidth * 0.9) newWidth = window.innerWidth * 0.9;
+        let newWidth = initialWidth + (deltaX * 2); // Multiply by 2 because wrapper is centered (-50% transform)
+        if (newWidth < 60) newWidth = 60; // Min size limits
+        if (newWidth > canvasArea.offsetWidth * 1.5) newWidth = canvasArea.offsetWidth * 1.5;
         
         artWrapper.style.width = `${newWidth}px`;
     };
 
-    const stopResize = () => {
+    const handleResizeEnd = () => {
         isResizing = false;
     };
 
-    resizeHandle.addEventListener('mousedown', startResize);
-    resizeHandle.addEventListener('touchstart', startResize, {passive: false});
+    // Bind Handle Resize
+    resizeHandle.addEventListener('mousedown', handleResizeStart);
+    document.addEventListener('mousemove', handleResizeMove);
+    document.addEventListener('mouseup', handleResizeEnd);
     
-    document.addEventListener('mousemove', (e) => {
-        if(isResizing) { doResize(e); e.preventDefault(); }
+    resizeHandle.addEventListener('touchstart', handleResizeStart, { passive: false });
+    document.addEventListener('touchmove', handleResizeMove, { passive: false });
+    document.addEventListener('touchend', handleResizeEnd);
+
+    // --- 3. MOBILE PINCH TO ZOOM MAGIC ---
+    let isPinching = false;
+    
+    canvasArea.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2 && !emptyState.style.display !== 'none') {
+            isDragging = false; // Override drag
+            isPinching = true;
+            initialDistance = getDistance(e.touches);
+            initialWidth = artWrapper.offsetWidth;
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    canvasArea.addEventListener('touchmove', (e) => {
+        if (isPinching && e.touches.length === 2) {
+            const currentDistance = getDistance(e.touches);
+            const scale = currentDistance / initialDistance;
+            
+            let newWidth = initialWidth * scale;
+            if (newWidth < 60) newWidth = 60;
+            if (newWidth > canvasArea.offsetWidth * 1.5) newWidth = canvasArea.offsetWidth * 1.5;
+            
+            artWrapper.style.width = `${newWidth}px`;
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    canvasArea.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) {
+            isPinching = false;
+        }
     });
-    document.addEventListener('touchmove', (e) => {
-        if(isResizing) { doResize(e); e.preventDefault(); }
-    }, {passive: false});
-    
-    document.addEventListener('mouseup', stopResize);
-    document.addEventListener('touchend', stopResize);
-    
 });
 </script>
 
