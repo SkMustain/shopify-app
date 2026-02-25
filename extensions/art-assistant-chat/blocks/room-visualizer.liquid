@@ -2,13 +2,13 @@
   {% if product.featured_image %}
     <button id="visualizer-trigger-{{ block.id }}" class="visualizer-btn" type="button">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-      <span>View in Your Room</span>
+      <span>View in Your Room (3D)</span>
     </button>
 
     <!-- Modal Overlay -->
     <div id="visualizer-modal-{{ block.id }}" class="visualizer-modal hidden">
       <div class="visualizer-header">
-        <h2>Room Visualizer</h2>
+        <h2>3D Room Visualizer</h2>
         <button id="visualizer-close-{{ block.id }}" class="close-btn">&times;</button>
       </div>
       
@@ -20,7 +20,7 @@
              Upload Wall Photo
            </label>
            <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
-           <p class="instructions hidden" id="viz-inst-{{ block.id }}">Pinch or drag corner to resize. Drag image to position.</p>
+           <p class="instructions hidden" id="viz-inst-{{ block.id }}">Drag to position. Use sliders to tune 3D angle & size.</p>
         </div>
 
         <!-- The Interactive Canvas Area -->
@@ -28,16 +28,35 @@
            <!-- Background Room Image -->
            <img id="room-bg-{{ block.id }}" class="room-bg hidden" src="" />
            
-           <!-- The Product Image (Draggable) -->
-           <div id="draggable-art-{{ block.id }}" class="draggable-art hidden">
-             <img src="{{ product.featured_image | img_url: '1024x' }}" alt="{{ product.title }}">
-             <div class="resize-handle"></div>
+           <!-- Perspective Wrapper for 3D Math -->
+           <div class="perspective-wrapper" id="perspective-wrapper-{{ block.id }}">
+               <!-- The Product Image (Draggable & Rotatable) -->
+               <div id="draggable-art-{{ block.id }}" class="draggable-art hidden">
+                 <div class="art-frame">
+                   <img src="{{ product.featured_image | image_url: width: 1024 }}" alt="{{ product.title }}">
+                   <div class="glass-reflection"></div>
+                 </div>
+                 <!-- Super realistic drop shadow separate from the element to allow 3D lift -->
+                 <div class="art-shadow"></div>
+               </div>
            </div>
            
            <div class="empty-state" id="empty-state-{{ block.id }}">
              <div class="empty-icon">📸</div>
              <p>Upload a photo of your room to see this painting on your wall.</p>
            </div>
+        </div>
+
+        <!-- 3D Tuning Panel (Hidden initially) -->
+        <div class="tuning-panel hidden" id="tuning-panel-{{ block.id }}">
+            <div class="slider-group">
+                <label>Size <span id="size-val-{{ block.id }}">100%</span></label>
+                <input type="range" id="size-slider-{{ block.id }}" min="20" max="250" value="100">
+            </div>
+            <div class="slider-group">
+                <label>Wall Perspective (Tilt) <span id="tilt-val-{{ block.id }}">0°</span></label>
+                <input type="range" id="tilt-slider-{{ block.id }}" min="-60" max="60" value="0">
+            </div>
         </div>
       </div>
       
@@ -54,7 +73,7 @@
   .visualizer-btn {
     width: 100%;
     padding: 14px 24px;
-    background: #000;
+    background: linear-gradient(135deg, #111, #333);
     color: #fff;
     border: none;
     border-radius: 50px;
@@ -67,12 +86,11 @@
     justify-content: center;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
   }
   .visualizer-btn:hover {
-    background: #222;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.3);
   }
   .visualizer-btn svg { width: 22px; height: 22px; }
 
@@ -80,7 +98,7 @@
   .visualizer-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: #000; /* Deep black for premium feel */
+    background: #000; 
     z-index: 999999;
     display: flex;
     flex-direction: column;
@@ -88,7 +106,6 @@
     animation: vizFadeIn 0.3s ease-out forwards;
   }
   .visualizer-modal.hidden { display: none !important; }
-
   @keyframes vizFadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
 
   /* Header */
@@ -130,7 +147,7 @@
     left: 0; right: 0;
     z-index: 10;
     text-align: center;
-    pointer-events: none; /* Let clicks pass through if empty */
+    pointer-events: none; 
   }
   .upload-label {
     display: inline-flex;
@@ -148,7 +165,7 @@
     transition: transform 0.2s;
   }
   .upload-label:active { transform: scale(0.95); }
-  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.5); padding: 6px 16px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
 
   /* Canvas Area */
   .visualizer-canvas {
@@ -159,7 +176,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    touch-action: none !important; /* CRITICAL: Prevent Safari pull-to-refresh & scrolling */
+    touch-action: none !important; 
   }
   .empty-state {
     text-align: center;
@@ -179,62 +196,142 @@
     transition: opacity 0.5s ease;
   }
   .room-bg:not(.hidden) { opacity: 1; display: block; }
-  
+
+  /* --- 3D PERSPECTIVE MAGIC --- */
+  .perspective-wrapper {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    perspective: 1200px; /* Deep perspective for realistic 3D */
+    pointer-events: none; /* Let drag events pass to draggable-art */
+  }
+
   /* Draggable Art Object */
   .draggable-art {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 200px; /* Base mobile size */
-    box-shadow: 0 20px 50px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.1);
+    width: 250px; 
     cursor: grab;
-    touch-action: none !important; 
-    transition: box-shadow 0.2s;
+    pointer-events: auto; /* Re-enable pointer events */
+    /* Hardware acceleration for buttery smooth 3D */
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    transform: translate3d(-50%, -50%, 0) rotateY(0deg) scale(1);
   }
-  @media(min-width:768px){ .draggable-art { width: 350px; } }
   
   .draggable-art.dragging {
     cursor: grabbing;
-    box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 0 2px rgba(255,255,255,0.3);
     z-index: 100;
   }
-  .draggable-art img {
+
+  /* 3D Frame Design */
+  .art-frame {
+    position: relative;
+    width: 100%;
+    background: #1a1a1a; /* Dark sleek premium frame */
+    padding: 4px; /* Frame thickness */
+    border-radius: 2px;
+    box-shadow: 
+      inset 0 0 0 1px rgba(255,255,255,0.15), /* Inner highlight */
+      0 0 0 1px #000, /* Outer tight border */
+      inset 0 0 15px rgba(0,0,0,0.8); /* Inner depth */
+    transform: translateZ(20px); /* Push out from wall in 3D space */
+  }
+  
+  .art-frame img {
     width: 100%;
     height: auto;
     display: block;
-    pointer-events: none; /* Prevents ghost dragging natively */
+    pointer-events: none; 
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* Canvas inner shadow */
   }
-  
-  /* Premium Resize Handle */
-  .resize-handle {
+
+  /* Glass Reflection */
+  .glass-reflection {
     position: absolute;
-    bottom: -12px;
-    right: -12px;
-    width: 34px;
-    height: 34px;
-    background: white;
-    border-radius: 50%;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    cursor: se-resize;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0.8;
-    transition: opacity 0.2s, transform 0.2s;
+    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
   }
-  .draggable-art:hover .resize-handle { opacity: 1; transform: scale(1.1); }
-  .resize-handle::after {
-    content: ""; /* Use custom SVG arrow instead of text for premium look */
-    width: 14px; height: 14px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 3 21 3 21 9'%3E%3C/polyline%3E%3Cline x1='9' y1='15' x2='21' y2='3'%3E%3C/line%3E%3Cpolyline points='9 21 3 21 3 15'%3E%3C/polyline%3E%3Cline x1='21' y1='3' x2='3' y2='21'%3E%3C/line%3E%3C/svg%3E");
-    background-size: cover;
+
+  /* Super Realistic 3D Wall Drop Shadow */
+  .art-shadow {
+    position: absolute;
+    top: 5%; left: 5%;
+    width: 90%; height: 90%;
+    background: rgba(0,0,0,0.7);
+    filter: blur(25px);
+    transform: translateZ(0px); /* Sits on the back wall */
+    z-index: -1;
+    pointer-events: none;
+    transition: filter 0.2s, background 0.2s;
+  }
+  .draggable-art.dragging .art-shadow {
+    filter: blur(40px);
+    background: rgba(0,0,0,0.4); /* Shadow softens when picked up */
+    top: 10%; left: 10%; width: 80%; height: 80%;
+  }
+
+  /* --- 3D Tuning Sliders --- */
+  .tuning-panel {
+    background: rgba(15, 15, 15, 0.95);
+    backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 20;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .tuning-panel.hidden { display: none !important; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .slider-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .slider-group span { color: white; }
+  
+  /* Premium Custom Range Slider */
+  .slider-group input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+  }
+  .slider-group input[type=range]:focus { outline: none; }
+  .slider-group input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 6px;
+    cursor: pointer;
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+  }
+  .slider-group input[type=range]::-webkit-slider-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #ffffff;
+    cursor: pointer;
+    -webkit-appearance: none;
+    margin-top: -7px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
   }
 
   /* Footer Actions */
   .visualizer-footer {
-    background: rgba(20,20,20,0.95);
-    backdrop-filter: blur(10px);
+    background: #000;
     padding: 15px 20px;
     display: flex;
     justify-content: center;
@@ -243,16 +340,16 @@
     padding-bottom: env(safe-area-inset-bottom, 20px); 
   }
   .visualizer-footer button {
-    padding: 12px 24px;
-    border-radius: 30px;
+    padding: 14px 24px;
+    border-radius: 50px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 15px;
     cursor: pointer;
     flex: 1;
-    max-width: 200px;
+    max-width: 250px;
     transition: all 0.2s;
   }
-  .viz-btn-outline { background: transparent; color: white; border: 1px solid rgba(255,255,255,0.3); }
+  .viz-btn-outline { background: #1a1a1a; color: white; border: 1px solid rgba(255,255,255,0.1); }
   .viz-btn-outline:active { background: rgba(255,255,255,0.1); }
   .viz-btn-primary { background: white; color: black; border: none; }
   .viz-btn-primary:active { transform: scale(0.96); }
@@ -269,11 +366,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById(`visualizer-close-${blockId}`);
     const uploadInput = document.getElementById(`visualizer-upload-${blockId}`);
     
-    // Canvas Elements
+    // Canvas & 3D Elements
     const bgImg = document.getElementById(`room-bg-${blockId}`);
     const artWrapper = document.getElementById(`draggable-art-${blockId}`);
     const canvasArea = document.getElementById(`visualizer-canvas-${blockId}`);
-    const resizeHandle = artWrapper.querySelector('.resize-handle');
+    const tuningPanel = document.getElementById(`tuning-panel-${blockId}`);
+    
+    // Sliders
+    const sizeSlider = document.getElementById(`size-slider-${blockId}`);
+    const tiltSlider = document.getElementById(`tilt-slider-${blockId}`);
+    const sizeVal = document.getElementById(`size-val-${blockId}`);
+    const tiltVal = document.getElementById(`tilt-val-${blockId}`);
     
     // UI States
     const emptyState = document.getElementById(`empty-state-${blockId}`);
@@ -288,7 +391,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- Modal Management ---
     triggerBtn.addEventListener('click', () => {
         modal.classList.remove('hidden');
-        // Prevent all background scrolling/bouncing on iOS
         document.body.style.overflow = 'hidden'; 
         document.body.style.position = 'fixed';
         document.body.style.width = '100%';
@@ -305,6 +407,26 @@ document.addEventListener("DOMContentLoaded", () => {
     doneBtn.addEventListener('click', closeModal);
     reuploadBtn.addEventListener('click', () => uploadInput.click());
 
+    // --- 3D State Variables ---
+    let currentX = 0; // X Coordinate relative to center
+    let currentY = 0; // Y Coordinate relative to center
+    let currentScale = 1; // Base is 1 (250px)
+    let currentRotY = 0; // 3D Tilt
+
+    // Single source of truth for rendering position and 3D
+    const render3D = () => {
+        // using translate3d for hardware acceleration
+        artWrapper.style.transform = `translate3d(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px), 0) rotateY(${currentRotY}deg) scale(${currentScale})`;
+        
+        // Dynamic Lighting on Glass based on Rotation
+        const reflection = artWrapper.querySelector('.glass-reflection');
+        if(reflection) {
+            // Tweak gradient angle based on tilt for realism
+            const lightAngle = 135 + (currentRotY * 1.5);
+            reflection.style.background = `linear-gradient(${lightAngle}deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%)`;
+        }
+    };
+
     // --- Image Upload ---
     uploadInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -316,46 +438,55 @@ document.addEventListener("DOMContentLoaded", () => {
                 artWrapper.classList.remove('hidden');
                 emptyState.style.display = 'none';
                 
-                // Switch UI Modes
+                // Show tuning panel and hide initial giant upload button
                 topControls.querySelector('.upload-label').style.display = 'none';
                 instructions.classList.remove('hidden');
+                tuningPanel.classList.remove('hidden');
                 footer.classList.remove('hidden');
                 
-                // Reset Art Position to Center Center
-                artWrapper.style.left = '50%';
-                artWrapper.style.top = '50%';
-                artWrapper.style.transform = 'translate(-50%, -50%)'; // Ensure transform is intact
+                // Reset Transforms
+                currentX = 0;
+                currentY = 0;
+                currentScale = 1;
+                currentRotY = 0;
+                sizeSlider.value = 100;
+                tiltSlider.value = 0;
+                sizeVal.innerText = '100%';
+                tiltVal.innerText = '0°';
+                render3D();
             };
             reader.readAsDataURL(file);
         }
     });
 
-    // --- PREMIUM INTERACTION LOGIC (Drag & Pinch) ---
-    // We must track state carefully to allow multi-touch (pinch to zoom) and single touch (drag)
-    
+    // --- Slider Listeners ---
+    sizeSlider.addEventListener('input', (e) => {
+        currentScale = e.target.value / 100;
+        sizeVal.innerText = `${e.target.value}%`;
+        render3D();
+    });
+
+    tiltSlider.addEventListener('input', (e) => {
+        currentRotY = e.target.value;
+        tiltVal.innerText = `${e.target.value}°`;
+        render3D();
+    });
+
+    // --- PRECISE DRAGGING LOGIC ---
     let isDragging = false;
-    let isResizing = false;
-    
-    // Drag state
-    let startX, startY, initialLeft, initialTop;
-    
-    // Pinch to Zoom state
-    let initialDistance = 0;
-    let initialWidth = 0;
+    let startPointX, startPointY;
+    let initialPosX, initialPosY;
 
-    // Utility to get distance between two touch points
-    const getDistance = (touches) => {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-    };
+    canvasArea.addEventListener('touchmove', (e) => {
+        // Only prevent default if we are interacting with the art, or if it's general scroll bounce
+        if (isDragging || e.target === canvasArea) {
+             e.preventDefault();
+        }
+    }, { passive: false });
 
-    // Prevent default scroll on canvas entirely
-    canvasArea.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
-
-    // --- 1. MOUSE / SINGLE TOUCH DRAGGING ---
     const handleDragStart = (e) => {
-        if (e.target === resizeHandle || e.touches?.length > 1) return; // Let pinch or resize handle logic run
+        // Prevent multi-touch drag starting
+        if (e.touches && e.touches.length > 1) return;
         
         isDragging = true;
         artWrapper.classList.add('dragging');
@@ -363,23 +494,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        startX = clientX;
-        startY = clientY;
+        startPointX = clientX;
+        startPointY = clientY;
         
-        // Compute offset manually since we are using translate(-50%, -50%)
-        // The read style.left is a percentage or pixel, let's normalize it to pixels to avoid jumping
-        const rect = artWrapper.getBoundingClientRect();
-        const parentRect = canvasArea.getBoundingClientRect();
+        initialPosX = currentX;
+        initialPosY = currentY;
         
-        // Exact pixel center of the art wrapper relative to canvas
-        initialLeft = rect.left - parentRect.left + (rect.width / 2);
-        initialTop = rect.top - parentRect.top + (rect.height / 2);
-        
-        // Hard set pixel values so math is easy and jump-free
-        artWrapper.style.left = `${initialLeft}px`;
-        artWrapper.style.top = `${initialTop}px`;
-        
-        e.preventDefault(); // Stop text selection
+        e.preventDefault(); 
     };
 
     const handleDragMove = (e) => {
@@ -388,12 +509,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        const deltaX = clientX - startX;
-        const deltaY = clientY - startY;
+        const deltaX = clientX - startPointX;
+        const deltaY = clientY - startPointY;
         
-        // Apply deltas directly to pixel origins
-        artWrapper.style.left = `${initialLeft + deltaX}px`;
-        artWrapper.style.top = `${initialTop + deltaY}px`;
+        currentX = initialPosX + deltaX;
+        currentY = initialPosY + deltaY;
+        
+        render3D();
     };
 
     const handleDragEnd = () => {
@@ -410,82 +532,12 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener('touchmove', handleDragMove, { passive: false });
     document.addEventListener('touchend', handleDragEnd);
 
-    // --- 2. BOTTOM CORNER RESIZE HANDLE ---
-    const handleResizeStart = (e) => {
-        e.stopPropagation(); // Stop drag event from firing
-        isResizing = true;
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        startX = clientX;
-        initialWidth = artWrapper.offsetWidth;
-        
-        e.preventDefault();
-    };
-
-    const handleResizeMove = (e) => {
-        if (!isResizing) return;
-        
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const deltaX = clientX - startX;
-        
-        let newWidth = initialWidth + (deltaX * 2); // Multiply by 2 because wrapper is centered (-50% transform)
-        if (newWidth < 60) newWidth = 60; // Min size limits
-        if (newWidth > canvasArea.offsetWidth * 1.5) newWidth = canvasArea.offsetWidth * 1.5;
-        
-        artWrapper.style.width = `${newWidth}px`;
-    };
-
-    const handleResizeEnd = () => {
-        isResizing = false;
-    };
-
-    // Bind Handle Resize
-    resizeHandle.addEventListener('mousedown', handleResizeStart);
-    document.addEventListener('mousemove', handleResizeMove);
-    document.addEventListener('mouseup', handleResizeEnd);
-    
-    resizeHandle.addEventListener('touchstart', handleResizeStart, { passive: false });
-    document.addEventListener('touchmove', handleResizeMove, { passive: false });
-    document.addEventListener('touchend', handleResizeEnd);
-
-    // --- 3. MOBILE PINCH TO ZOOM MAGIC ---
-    let isPinching = false;
-    
-    canvasArea.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 2 && !emptyState.style.display !== 'none') {
-            isDragging = false; // Override drag
-            isPinching = true;
-            initialDistance = getDistance(e.touches);
-            initialWidth = artWrapper.offsetWidth;
-            e.preventDefault();
-        }
-    }, { passive: false });
-
-    canvasArea.addEventListener('touchmove', (e) => {
-        if (isPinching && e.touches.length === 2) {
-            const currentDistance = getDistance(e.touches);
-            const scale = currentDistance / initialDistance;
-            
-            let newWidth = initialWidth * scale;
-            if (newWidth < 60) newWidth = 60;
-            if (newWidth > canvasArea.offsetWidth * 1.5) newWidth = canvasArea.offsetWidth * 1.5;
-            
-            artWrapper.style.width = `${newWidth}px`;
-            e.preventDefault();
-        }
-    }, { passive: false });
-
-    canvasArea.addEventListener('touchend', (e) => {
-        if (e.touches.length < 2) {
-            isPinching = false;
-        }
-    });
 });
 </script>
 
 {% schema %}
 {
-  "name": "Room Visualizer",
+  "name": "Room Visualizer (3D)",
   "target": "section",
   "enabled_on": {
     "templates": ["product"]
