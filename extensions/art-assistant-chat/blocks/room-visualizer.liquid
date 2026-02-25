@@ -1,0 +1,355 @@
+<div class="art-visualizer-container">
+  {% if product.featured_image %}
+    <button id="visualizer-trigger-{{ block.id }}" class="visualizer-btn" type="button">
+      🖼️ View in your room
+    </button>
+
+    <!-- Modal Overlay -->
+    <div id="visualizer-modal-{{ block.id }}" class="visualizer-modal hidden">
+      <div class="visualizer-header">
+        <h2>Room Visualizer</h2>
+        <button id="visualizer-close-{{ block.id }}" class="close-btn">&times;</button>
+      </div>
+      
+      <div class="visualizer-body">
+        
+        <div class="visualizer-controls">
+           <label for="visualizer-upload-{{ block.id }}" class="upload-label">
+             📸 Upload Your Room Photo
+           </label>
+           <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
+           <p class="instructions">Pinch or scroll to resize. Drag to position.</p>
+        </div>
+
+        <!-- The Interactive Canvas Area -->
+        <div class="visualizer-canvas" id="visualizer-canvas-{{ block.id }}">
+           <!-- Background Room Image -->
+           <img id="room-bg-{{ block.id }}" class="room-bg hidden" src="" />
+           
+           <!-- The Product Image (Draggable) -->
+           <div id="draggable-art-{{ block.id }}" class="draggable-art hidden">
+             <img src="{{ product.featured_image | img_url: '1024x' }}" alt="{{ product.title }}">
+             <div class="resize-handle"></div>
+           </div>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <p><em>Room Visualizer: This product has no image.</em></p>
+  {% endif %}
+</div>
+
+<style>
+  /* Button Styles */
+  .visualizer-btn {
+    width: 100%;
+    padding: 12px 24px;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 15px 0;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+  }
+  .visualizer-btn:hover {
+    background: #333;
+    transform: translateY(-2px);
+  }
+
+  /* Modal Styles */
+  .visualizer-modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  .visualizer-modal.hidden {
+    display: none !important;
+  }
+
+  /* Header */
+  .visualizer-header {
+    background: #fff;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  .visualizer-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #000;
+  }
+  .close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    color: #000;
+  }
+
+  /* Body & Controls */
+  .visualizer-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .visualizer-controls {
+    padding: 15px;
+    background: rgba(25, 25, 25, 0.9);
+    text-align: center;
+    color: #fff;
+  }
+  .upload-label {
+    display: inline-block;
+    padding: 10px 20px;
+    background: #fff;
+    color: #000;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .instructions {
+    margin: 10px 0 0 0;
+    font-size: 0.9em;
+    color: #ccc;
+  }
+
+  /* Canvas Area */
+  .visualizer-canvas {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .room-bg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none; /* Let drag events pass through to wrapper */
+  }
+  
+  /* Draggable Art Object */
+  .draggable-art {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 250px;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    cursor: grab;
+    touch-action: none; /* Important for mobile dragging */
+  }
+  .draggable-art:active {
+    cursor: grabbing;
+  }
+  .draggable-art img {
+    width: 100%;
+    height: auto;
+    display: block;
+    outline: 2px solid rgba(255,255,255,0.8);
+    outline-offset: -2px;
+  }
+  
+  /* Resize Handle (Bottom Right) */
+  .resize-handle {
+    position: absolute;
+    bottom: -15px;
+    right: -15px;
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    cursor: se-resize;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  .resize-handle::after {
+    content: "↕";
+    transform: rotate(-45deg);
+    font-size: 14px;
+    color: #000;
+  }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const blockId = "{{ block.id }}";
+    
+    // Core Elements
+    const triggerBtn = document.getElementById(`visualizer-trigger-${blockId}`);
+    const modal = document.getElementById(`visualizer-modal-${blockId}`);
+    const closeBtn = document.getElementById(`visualizer-close-${blockId}`);
+    const uploadInput = document.getElementById(`visualizer-upload-${blockId}`);
+    
+    // Canvas Elements
+    const bgImg = document.getElementById(`room-bg-${blockId}`);
+    const artWrapper = document.getElementById(`draggable-art-${blockId}`);
+    const canvasArea = document.getElementById(`visualizer-canvas-${blockId}`);
+    const resizeHandle = artWrapper.querySelector('.resize-handle');
+
+    if (!triggerBtn) return; // Exit if no product image
+
+    // 1. Open / Close Modal
+    triggerBtn.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Stop background scrolling
+    });
+
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    });
+
+    // 2. Handle Image Upload
+    uploadInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                bgImg.src = ev.target.result;
+                bgImg.classList.remove('hidden');
+                artWrapper.classList.remove('hidden');
+                
+                // Center the art initially
+                artWrapper.style.left = '50%';
+                artWrapper.style.top = '50%';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 3. Dragging Logic (Mouse & Touch)
+    let isDragging = false;
+    let startX, startY;
+    let startLeft, startTop;
+
+    const startDrag = (e) => {
+        // Prevent drag on resize handle
+        if (e.target === resizeHandle) return;
+        
+        isDragging = true;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        startX = clientX;
+        startY = clientY;
+        
+        // Get absolute pixel position of the art wrapper center (transform translate isn't easily readable)
+        // Instead of parsing transform, we change coordinates to be anchored pixel-based on first click
+        const rect = artWrapper.getBoundingClientRect();
+        const canvasRect = canvasArea.getBoundingClientRect();
+        
+        // Calculate offset from canvas area
+        startLeft = rect.left - canvasRect.left + (rect.width/2);
+        startTop = rect.top - canvasRect.top + (rect.height/2);
+        
+        // Switch to absolute positioning so it doesn't jump
+        artWrapper.style.left = `${startLeft}px`;
+        artWrapper.style.top = `${startTop}px`;
+        
+        e.preventDefault(); // Stop scrolling on mobile
+    };
+
+    const doDrag = (e) => {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const deltaX = clientX - startX;
+        const deltaY = clientY - startY;
+        
+        artWrapper.style.left = `${startLeft + deltaX}px`;
+        artWrapper.style.top = `${startTop + deltaY}px`;
+    };
+
+    const stopDrag = () => {
+        isDragging = false;
+    };
+
+    artWrapper.addEventListener('mousedown', startDrag);
+    artWrapper.addEventListener('touchstart', startDrag, {passive: false});
+    
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('touchmove', doDrag, {passive: false});
+    
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchend', stopDrag);
+
+    // 4. Resizing Logic (Mouse & Touch on Handle)
+    let isResizing = false;
+    let startWidth;
+
+    const startResize = (e) => {
+        isResizing = true;
+        e.stopPropagation(); // Don't trigger drag
+        e.preventDefault();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        
+        startX = clientX;
+        startWidth = artWrapper.offsetWidth;
+    };
+
+    const doResize = (e) => {
+        if (!isResizing) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const deltaX = clientX - startX;
+        
+        // Because handle is on the right, dragging right increases width
+        let newWidth = startWidth + deltaX;
+        
+        // Add min/max limits
+        if (newWidth < 50) newWidth = 50;
+        if (newWidth > window.innerWidth * 0.9) newWidth = window.innerWidth * 0.9;
+        
+        artWrapper.style.width = `${newWidth}px`;
+    };
+
+    const stopResize = () => {
+        isResizing = false;
+    };
+
+    resizeHandle.addEventListener('mousedown', startResize);
+    resizeHandle.addEventListener('touchstart', startResize, {passive: false});
+    
+    document.addEventListener('mousemove', (e) => {
+        if(isResizing) { doResize(e); e.preventDefault(); }
+    });
+    document.addEventListener('touchmove', (e) => {
+        if(isResizing) { doResize(e); e.preventDefault(); }
+    }, {passive: false});
+    
+    document.addEventListener('mouseup', stopResize);
+    document.addEventListener('touchend', stopResize);
+    
+});
+</script>
+
+{% schema %}
+{
+  "name": "Room Visualizer",
+  "target": "section",
+  "enabled_on": {
+    "templates": ["product"]
+  },
+  "settings": []
+}
+{% endschema %}
