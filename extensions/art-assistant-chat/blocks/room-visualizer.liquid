@@ -2,13 +2,13 @@
   {% if product.featured_image %}
     <button id="visualizer-trigger-{{ block.id }}" class="visualizer-btn" type="button">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-      <span>View in Your Room (3D)</span>
+      <span>View in Your Room (Pro 3D)</span>
     </button>
 
     <!-- Modal Overlay -->
     <div id="visualizer-modal-{{ block.id }}" class="visualizer-modal hidden">
       <div class="visualizer-header">
-        <h2>3D Room Visualizer</h2>
+        <h2>Pro 3D Room Visualizer</h2>
         <button id="visualizer-close-{{ block.id }}" class="close-btn">&times;</button>
       </div>
       
@@ -20,7 +20,7 @@
              Upload Wall Photo
            </label>
            <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
-           <p class="instructions hidden" id="viz-inst-{{ block.id }}">Drag to position. Use sliders to tune 3D angle & size.</p>
+           <p class="instructions hidden" id="viz-inst-{{ block.id }}">Drag art to move. Use controls below to adjust 3D perspective.</p>
         </div>
 
         <!-- The Interactive Canvas Area -->
@@ -43,19 +43,32 @@
            
            <div class="empty-state" id="empty-state-{{ block.id }}">
              <div class="empty-icon">📸</div>
-             <p>Upload a photo of your room to see this painting on your wall.</p>
+             <p>Upload a photo of your room to test this painting with Pro 3D controls.</p>
            </div>
         </div>
 
-        <!-- 3D Tuning Panel (Hidden initially) -->
+        <!-- PRO 3D Tuning Panel -->
         <div class="tuning-panel hidden" id="tuning-panel-{{ block.id }}">
-            <div class="slider-group">
-                <label>Size <span id="size-val-{{ block.id }}">100%</span></label>
-                <input type="range" id="size-slider-{{ block.id }}" min="20" max="250" value="100">
+            <div class="tuning-header">
+                <h3>3D Adjustments</h3>
+                <button type="button" id="reset-3d-{{ block.id }}" class="reset-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                  Reset
+                </button>
             </div>
-            <div class="slider-group">
-                <label>Wall Perspective (Tilt) <span id="tilt-val-{{ block.id }}">0°</span></label>
-                <input type="range" id="tilt-slider-{{ block.id }}" min="-60" max="60" value="0">
+            <div class="sliders-container">
+                <div class="slider-group">
+                    <label>Scale <span id="size-val-{{ block.id }}">100%</span></label>
+                    <input type="range" id="size-slider-{{ block.id }}" min="20" max="250" value="100">
+                </div>
+                <div class="slider-group">
+                    <label>Wall Pan (L/R) <span id="pany-val-{{ block.id }}">0°</span></label>
+                    <input type="range" id="pany-slider-{{ block.id }}" min="-60" max="60" value="0">
+                </div>
+                <div class="slider-group">
+                    <label>Wall Tilt (U/D) <span id="tiltx-val-{{ block.id }}">0°</span></label>
+                    <input type="range" id="tiltx-slider-{{ block.id }}" min="-60" max="60" value="0">
+                </div>
             </div>
         </div>
       </div>
@@ -69,16 +82,19 @@
 </div>
 
 <style>
+  /* Base Reset */
+  .art-visualizer-container * { box-sizing: border-box; }
+
   /* Button Styles */
   .visualizer-btn {
     width: 100%;
     padding: 14px 24px;
-    background: linear-gradient(135deg, #111, #333);
-    color: #fff;
-    border: none;
+    background: linear-gradient(135deg, #0a0a0a, #2a2a2a);
+    color: #ffd700; /* Gold accent for Pro */
+    border: 1px solid rgba(255, 215, 0, 0.3);
     border-radius: 50px;
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     margin: 20px 0;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -86,11 +102,12 @@
     justify-content: center;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.1);
   }
   .visualizer-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+    box-shadow: 0 12px 30px rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.6);
   }
   .visualizer-btn svg { width: 22px; height: 22px; }
 
@@ -98,7 +115,7 @@
   .visualizer-modal {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: #000; 
+    background: #050505; 
     z-index: 999999;
     display: flex;
     flex-direction: column;
@@ -110,16 +127,16 @@
 
   /* Header */
   .visualizer-header {
-    background: rgba(20,20,20,0.95);
+    background: rgba(10,10,10,0.95);
     backdrop-filter: blur(10px);
     padding: 18px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
     color: white;
   }
-  .visualizer-header h2 { margin: 0; font-size: 1.1rem; font-weight: 500; letter-spacing: 0.5px; }
+  .visualizer-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; color: #ffd700; }
   .close-btn {
     background: rgba(255,255,255,0.1);
     border: none;
@@ -153,26 +170,26 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 12px 24px;
-    background: rgba(255,255,255,0.95);
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #fff, #f0f0f0);
     color: #000;
     border-radius: 30px;
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: 700;
+    font-size: 15px;
     cursor: pointer;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     pointer-events: auto;
     transition: transform 0.2s;
   }
   .upload-label:active { transform: scale(0.95); }
-  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.7); padding: 6px 16px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.5); backdrop-filter: blur(5px); }
+  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.8); padding: 8px 18px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.8); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); }
 
   /* Canvas Area */
   .visualizer-canvas {
     flex: 1;
     position: relative;
     overflow: hidden;
-    background: #111;
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -190,19 +207,19 @@
   .room-bg {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain; /* Changed from cover to contain so they see full room */
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.5s ease;
   }
   .room-bg:not(.hidden) { opacity: 1; display: block; }
 
-  /* --- 3D PERSPECTIVE MAGIC --- */
+  /* --- PRO 3D PERSPECTIVE MAGIC --- */
   .perspective-wrapper {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    perspective: 1200px; /* Deep perspective for realistic 3D */
-    pointer-events: none; /* Let drag events pass to draggable-art */
+    perspective: 1000px; /* Slightly tighter perspective for more dramatic effect */
+    pointer-events: none; 
   }
 
   /* Draggable Art Object */
@@ -212,12 +229,12 @@
     left: 50%;
     width: 250px; 
     cursor: grab;
-    pointer-events: auto; /* Re-enable pointer events */
-    /* Hardware acceleration for buttery smooth 3D */
+    pointer-events: auto; 
     transform-style: preserve-3d;
     backface-visibility: hidden;
-    transform: translate3d(-50%, -50%, 0) rotateY(0deg) scale(1);
+    /* Transform managed by JS matrix */
   }
+  @media(min-width:768px){ .draggable-art { width: 350px; } }
   
   .draggable-art.dragging {
     cursor: grabbing;
@@ -228,14 +245,15 @@
   .art-frame {
     position: relative;
     width: 100%;
-    background: #1a1a1a; /* Dark sleek premium frame */
-    padding: 4px; /* Frame thickness */
-    border-radius: 2px;
+    background: #111;
+    padding: 6px; /* Thicker premium frame */
+    border-radius: 3px;
     box-shadow: 
-      inset 0 0 0 1px rgba(255,255,255,0.15), /* Inner highlight */
-      0 0 0 1px #000, /* Outer tight border */
-      inset 0 0 15px rgba(0,0,0,0.8); /* Inner depth */
-    transform: translateZ(20px); /* Push out from wall in 3D space */
+      inset 0 0 0 1px rgba(255,255,255,0.2), 
+      0 0 0 1px #000, 
+      0 0 0 2px rgba(255,215,0,0.1), /* Gold accent ring */
+      inset 0 0 20px rgba(0,0,0,0.9); 
+    transform: translateZ(25px); /* Lift off wall */
   }
   
   .art-frame img {
@@ -243,13 +261,13 @@
     height: auto;
     display: block;
     pointer-events: none; 
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.5); /* Canvas inner shadow */
+    box-shadow: inset 0 0 15px rgba(0,0,0,0.8); 
   }
 
   /* Glass Reflection */
   .glass-reflection {
     position: absolute;
-    top: 4px; left: 4px; right: 4px; bottom: 4px;
+    top: 6px; left: 6px; right: 6px; bottom: 6px;
     background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%);
     pointer-events: none;
   }
@@ -257,52 +275,77 @@
   /* Super Realistic 3D Wall Drop Shadow */
   .art-shadow {
     position: absolute;
-    top: 5%; left: 5%;
-    width: 90%; height: 90%;
-    background: rgba(0,0,0,0.7);
-    filter: blur(25px);
-    transform: translateZ(0px); /* Sits on the back wall */
+    top: 10%; left: 10%;
+    width: 80%; height: 80%;
+    background: rgba(0,0,0,0.8);
+    filter: blur(30px);
+    transform: translateZ(-5px); /* Push shadow slightly behind wall plane */
     z-index: -1;
     pointer-events: none;
-    transition: filter 0.2s, background 0.2s;
+    transition: filter 0.2s, background 0.2s, transform 0.2s;
   }
   .draggable-art.dragging .art-shadow {
-    filter: blur(40px);
-    background: rgba(0,0,0,0.4); /* Shadow softens when picked up */
-    top: 10%; left: 10%; width: 80%; height: 80%;
+    filter: blur(45px);
+    background: rgba(0,0,0,0.5); 
+    transform: translateZ(-20px); /* Shadow drops further back when lifted */
   }
 
-  /* --- 3D Tuning Sliders --- */
+  /* --- PRO 3D Tuning Sliders --- */
   .tuning-panel {
-    background: rgba(15, 15, 15, 0.95);
-    backdrop-filter: blur(15px);
-    border-top: 1px solid rgba(255,255,255,0.1);
-    padding: 20px;
+    background: rgba(10, 10, 10, 0.98);
+    border-top: 1px solid rgba(255, 215, 0, 0.2);
+    padding: 15px 20px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 12px;
     z-index: 20;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
   .tuning-panel.hidden { display: none !important; }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-  .slider-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+  .tuning-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
   }
+  .tuning-header h3 { margin: 0; color: #ffd700; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  
+  .reset-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      text-transform: uppercase;
+  }
+  .reset-btn:active { background: rgba(255,255,255,0.2); }
+
+  .sliders-container {
+      display: grid;
+      gap: 12px;
+      /* Scroll on very small screens if needed */
+      max-height: 30vh;
+      overflow-y: auto;
+      padding-right: 5px;
+  }
+
+  .slider-group { display: flex; flex-direction: column; gap: 6px; }
   .slider-group label {
     display: flex;
     justify-content: space-between;
-    font-size: 13px;
-    color: rgba(255,255,255,0.7);
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 1px;
   }
-  .slider-group span { color: white; }
+  .slider-group span { color: #fff; font-variant-numeric: tabular-nums; }
   
   /* Premium Custom Range Slider */
   .slider-group input[type=range] {
@@ -313,20 +356,21 @@
   .slider-group input[type=range]:focus { outline: none; }
   .slider-group input[type=range]::-webkit-slider-runnable-track {
     width: 100%;
-    height: 6px;
+    height: 4px; /* Thinner sophisticated track */
     cursor: pointer;
-    background: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.1);
     border-radius: 10px;
   }
   .slider-group input[type=range]::-webkit-slider-thumb {
-    height: 20px;
-    width: 20px;
+    height: 18px;
+    width: 18px;
     border-radius: 50%;
-    background: #ffffff;
+    background: #ffd700; /* Gold handle */
     cursor: pointer;
     -webkit-appearance: none;
     margin-top: -7px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+    border: 2px solid #000;
   }
 
   /* Footer Actions */
@@ -351,7 +395,7 @@
   }
   .viz-btn-outline { background: #1a1a1a; color: white; border: 1px solid rgba(255,255,255,0.1); }
   .viz-btn-outline:active { background: rgba(255,255,255,0.1); }
-  .viz-btn-primary { background: white; color: black; border: none; }
+  .viz-btn-primary { background: linear-gradient(135deg, #ffd700, #ffaa00); color: black; border: none; box-shadow: 0 4px 15px rgba(255,215,0,0.3); }
   .viz-btn-primary:active { transform: scale(0.96); }
 
 </style>
@@ -372,11 +416,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const canvasArea = document.getElementById(`visualizer-canvas-${blockId}`);
     const tuningPanel = document.getElementById(`tuning-panel-${blockId}`);
     
-    // Sliders
+    // Controls
     const sizeSlider = document.getElementById(`size-slider-${blockId}`);
-    const tiltSlider = document.getElementById(`tilt-slider-${blockId}`);
+    const panySlider = document.getElementById(`pany-slider-${blockId}`);
+    const tiltxSlider = document.getElementById(`tiltx-slider-${blockId}`);
+    
     const sizeVal = document.getElementById(`size-val-${blockId}`);
-    const tiltVal = document.getElementById(`tilt-val-${blockId}`);
+    const panyVal = document.getElementById(`pany-val-${blockId}`);
+    const tiltxVal = document.getElementById(`tiltx-val-${blockId}`);
+    
+    const resetBtn = document.getElementById(`reset-3d-${blockId}`);
     
     // UI States
     const emptyState = document.getElementById(`empty-state-${blockId}`);
@@ -407,25 +456,53 @@ document.addEventListener("DOMContentLoaded", () => {
     doneBtn.addEventListener('click', closeModal);
     reuploadBtn.addEventListener('click', () => uploadInput.click());
 
-    // --- 3D State Variables ---
-    let currentX = 0; // X Coordinate relative to center
-    let currentY = 0; // Y Coordinate relative to center
-    let currentScale = 1; // Base is 1 (250px)
-    let currentRotY = 0; // 3D Tilt
+    // --- PRO 3D Variables ---
+    let currentX = 0; 
+    let currentY = 0; 
+    let currentScale = 1; 
+    let currentRotY = 0; // Pan (Left/Right)
+    let currentRotX = 0; // Tilt (Up/Down)
 
-    // Single source of truth for rendering position and 3D
+    // Engine: Single source of truth for rendering
     const render3D = () => {
-        // using translate3d for hardware acceleration
-        artWrapper.style.transform = `translate3d(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px), 0) rotateY(${currentRotY}deg) scale(${currentScale})`;
+        // Order matters: position -> rotate -> scale
+        artWrapper.style.transform = `translate3d(calc(-50% + ${currentX}px), calc(-50% + ${currentY}px), 0) rotateX(${currentRotX}deg) rotateY(${currentRotY}deg) scale(${currentScale})`;
         
-        // Dynamic Lighting on Glass based on Rotation
+        // Dynamic Lighting based on combined rotation
         const reflection = artWrapper.querySelector('.glass-reflection');
         if(reflection) {
-            // Tweak gradient angle based on tilt for realism
-            const lightAngle = 135 + (currentRotY * 1.5);
-            reflection.style.background = `linear-gradient(${lightAngle}deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 100%)`;
+            // Complex light vector mapping
+            const lightAngle = 135 + (currentRotY * 1.5) - (currentRotX * 1.5);
+            reflection.style.background = `linear-gradient(${lightAngle}deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0) 100%)`;
+        }
+        
+        // Dynamic Drop Shadow offset based on tilt
+        const shadow = artWrapper.querySelector('.art-shadow');
+        if(shadow && !isDragging) {
+             const shiftX = (currentRotY / 60) * -15; // Shift opposite to pan
+             const shiftY = (currentRotX / 60) * 15;  // Shift opposite to tilt
+             shadow.style.top = `calc(10% + ${shiftY}px)`;
+             shadow.style.left = `calc(10% + ${shiftX}px)`;
         }
     };
+
+    const reset3DControls = () => {
+        currentScale = 1;
+        currentRotY = 0;
+        currentRotX = 0;
+        
+        sizeSlider.value = 100;
+        panySlider.value = 0;
+        tiltxSlider.value = 0;
+        
+        sizeVal.innerText = '100%';
+        panyVal.innerText = '0°';
+        tiltxVal.innerText = '0°';
+        
+        render3D();
+    };
+
+    resetBtn.addEventListener('click', reset3DControls);
 
     // --- Image Upload ---
     uploadInput.addEventListener('change', (e) => {
@@ -438,22 +515,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 artWrapper.classList.remove('hidden');
                 emptyState.style.display = 'none';
                 
-                // Show tuning panel and hide initial giant upload button
+                // Show Pro tuning panel
                 topControls.querySelector('.upload-label').style.display = 'none';
                 instructions.classList.remove('hidden');
                 tuningPanel.classList.remove('hidden');
                 footer.classList.remove('hidden');
                 
-                // Reset Transforms
+                // Reset Transforms & Position for new image
                 currentX = 0;
                 currentY = 0;
-                currentScale = 1;
-                currentRotY = 0;
-                sizeSlider.value = 100;
-                tiltSlider.value = 0;
-                sizeVal.innerText = '100%';
-                tiltVal.innerText = '0°';
-                render3D();
+                reset3DControls();
             };
             reader.readAsDataURL(file);
         }
@@ -466,9 +537,15 @@ document.addEventListener("DOMContentLoaded", () => {
         render3D();
     });
 
-    tiltSlider.addEventListener('input', (e) => {
+    panySlider.addEventListener('input', (e) => {
         currentRotY = e.target.value;
-        tiltVal.innerText = `${e.target.value}°`;
+        panyVal.innerText = `${e.target.value}°`;
+        render3D();
+    });
+
+    tiltxSlider.addEventListener('input', (e) => {
+        currentRotX = e.target.value;
+        tiltxVal.innerText = `${e.target.value}°`;
         render3D();
     });
 
@@ -478,18 +555,24 @@ document.addEventListener("DOMContentLoaded", () => {
     let initialPosX, initialPosY;
 
     canvasArea.addEventListener('touchmove', (e) => {
-        // Only prevent default if we are interacting with the art, or if it's general scroll bounce
         if (isDragging || e.target === canvasArea) {
              e.preventDefault();
         }
     }, { passive: false });
 
     const handleDragStart = (e) => {
-        // Prevent multi-touch drag starting
+        // Prevent multi-touch
         if (e.touches && e.touches.length > 1) return;
         
         isDragging = true;
         artWrapper.classList.add('dragging');
+        
+        // Slightly re-center drop shadow for drag visual feedback
+        const shadow = artWrapper.querySelector('.art-shadow');
+        if(shadow) {
+            shadow.style.top = '10%';
+            shadow.style.left = '10%';
+        }
         
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -521,6 +604,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const handleDragEnd = () => {
         isDragging = false;
         artWrapper.classList.remove('dragging');
+        
+        // Re-apply rotation-based shadow shift
+        render3D(); 
     };
 
     // Bind Drag
@@ -537,7 +623,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 {% schema %}
 {
-  "name": "Room Visualizer (3D)",
+  "name": "Room Visualizer (Pro 3D)",
   "target": "section",
   "enabled_on": {
     "templates": ["product"]
