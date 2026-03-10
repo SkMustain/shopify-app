@@ -694,10 +694,22 @@
               if(data.type === 'carousel' || data.carousel) {
                   const carouselData = data.carousel || (data.type === 'carousel' ? data.data : []);
                   if (carouselData && carouselData.length > 0) {
-                      const [hero, ...rest] = carouselData;
+                      const hero = carouselData[0];
+                      const rest = carouselData.slice(1);
                       addHeroCard(hero); // Top result in chat
-                      updateSidebar(rest); // Rest in sidebar
-                      addMsg("I've highlighted the top match above, and added more options to the sidebar.", 'bot');
+                      
+                      if (rest.length > 0) {
+                        updateSidebar(rest); // Rest in sidebar
+                        addMsg("I've highlighted the top match above, and added more options to the sidebar.", 'bot');
+                      } else {
+                        // If only one item is returned, ensure sidebar is cleared
+                        document.getElementById('art-sidebar-grid').innerHTML = '<div class="art-empty-state"><p>Showing top match in chat.</p></div>';
+                      }
+                      
+                      // Auto-switch to "Picks" if on mobile so they see the sidebar options if rest exists
+                      if(window.innerWidth <= 900 && rest.length > 0) {
+                        setTimeout(() => switchTab('sidebar'), 1500); 
+                      }
                   }
               }
               
