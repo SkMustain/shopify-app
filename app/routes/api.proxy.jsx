@@ -273,10 +273,16 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           reply: "Pick a theme that suits your style:",
           type: "actions",
           data: [
-            { label: "Modern & Abstract", payload: "FLOW_GUIDE:SEARCH:collection:'Modern & Abstract'" },
-            { label: "Nature & Landscapes", payload: "FLOW_GUIDE:SEARCH:collection:'Nature & Landscapes'" },
-            { label: "Spiritual & Religious", payload: "FLOW_GUIDE:SEARCH:collection:'Spiritual & Religious'" },
-            { label: "City & Travel", payload: "FLOW_GUIDE:SEARCH:collection:'Urban & City Life'" }
+            { label: "🛋 Living Room", payload: "FLOW_GUIDE:SEARCH:collection:'Living Room'" },
+            { label: "🛏 Bedroom", payload: "FLOW_GUIDE:SEARCH:collection:'Bedroom'" },
+            { label: "🏨 Hotel", payload: "FLOW_GUIDE:SEARCH:collection:'Hotel'" },
+            { label: "⭐ Best Sellers", payload: "FLOW_GUIDE:SEARCH:collection:'Best Sellers'" },
+            { label: "🧒 Kids Room", payload: "FLOW_GUIDE:SEARCH:collection:'Kids Room'" },
+            { label: "🖼 Multiple Frames", payload: "FLOW_GUIDE:SEARCH:collection:'Multiple Frames'" },
+            { label: "💕 Love & Romance", payload: "FLOW_GUIDE:SEARCH:collection:'Love & Romance'" },
+            { label: "🎨 Gen Z Art", payload: "FLOW_GUIDE:SEARCH:collection:'Gen Z Art'" },
+            { label: "🌧 Monsoon", payload: "FLOW_GUIDE:SEARCH:collection:'Monsoon'" },
+            { label: "🪷 Lord Buddha", payload: "FLOW_GUIDE:SEARCH:collection:'Lord Buddha Wall Art'" }
           ]
         };
       }
