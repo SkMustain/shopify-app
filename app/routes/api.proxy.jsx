@@ -299,16 +299,30 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       }
     }
 
-    // --- 4. GENERIC TEXT HANDLER (Catch-all) ---
+    // --- 4. GENERIC TEXT HANDLER (Freeform Search) ---
     else if (userMessage) {
-      responseData = {
-        reply: "I'm your personal Art Assistant! Please choose an option below to find your perfect painting. 👇",
-        type: "actions",
-        data: [
-          { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
-          { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
-        ]
-      };
+      // Try to search the store with the user's exact message
+      const searchResult = await executeSearch(admin, userMessage, {});
+
+      if (searchResult.data && searchResult.data.length > 0) {
+        responseData = {
+          reply: `Here are some ${userMessage} options I found for you! ✨\n\nWould you like to refine this search or try something else?`,
+          carousel: searchResult.data,
+          actions: [
+            { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+            { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
+          ]
+        };
+      } else {
+        responseData = {
+          reply: `I couldn't find exact matches for "${userMessage}".\n\nI'm your personal Art Assistant! Please choose an option below to find your perfect painting. 👇`,
+          type: "actions",
+          data: [
+            { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+            { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" }
+          ]
+        };
+      }
     }
 
     return Response.json(responseData, { headers: cors?.headers || {} });
