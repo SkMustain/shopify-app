@@ -1,10 +1,28 @@
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  const { session, cors } = await authenticate.public.appProxy(request);
+  const { session, cors, admin } = await authenticate.public.appProxy(request);
 
   if (!session) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Debug Print: Check if ANY products exist with Nature
+  if (admin) {
+    try {
+      const res = await admin.graphql(`
+        query {
+          products(first: 5, query: "(title:Nature* OR tag:Nature*)") {
+            edges { node { title tags variants(first: 1) { edges { node { id, price { amount } } } } } }
+          }
+        }
+       `);
+      const json = await res.json();
+      console.log("=== DEBUG: API PROXY LOAD - NATURE SEARCH ===");
+      console.log(JSON.stringify(json.data.products.edges, null, 2));
+    } catch (e) {
+      console.log("Debug Search Error:", e);
+    }
   }
 
   return Response.json({ status: "ok", message: "Art Assistant API v2 Ready" }, { headers: cors?.headers || {} });
@@ -354,6 +372,10 @@ async function executeSearch(admin, query, filters) {
     finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
   }
 
+  console.log("------------------- EXECUTE SEARCH TRIGGERED -------------------");
+  console.log("RAW QUERY:", query);
+  console.log("FINAL GRAPHQL:", finalQuery);
+
   try {
     const response = await admin.graphql(
       `#graphql
@@ -380,6 +402,11 @@ async function executeSearch(admin, query, filters) {
 
     const json = await response.json();
     let products = json.data?.products?.edges.map(e => e.node) || [];
+
+    console.log("GRAPHQL RESPONSE COUNT:", products.length);
+    if (products.length === 0) {
+      console.log("FULL JSON ERROR RESPONSE DUMP?:", JSON.stringify(json));
+    }
 
     // Apply Budget Filter in Memory
     if (budget) {
