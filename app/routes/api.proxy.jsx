@@ -259,10 +259,10 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           reply: "Great! Which direction does your wall face?",
           type: "actions",
           data: [
-            { label: "North (Wealth/Water)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' North" },
-            { label: "South (Fame/Fire)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' South" },
-            { label: "East (Health/Air)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' East" },
-            { label: "West (Gains/Space)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' West" },
+            { label: "North (Wealth/Water)", payload: "FLOW_GUIDE:SEARCH:tag:Vastu-North" },
+            { label: "South (Fame/Fire)", payload: "FLOW_GUIDE:SEARCH:tag:Vastu-South" },
+            { label: "East (Health/Air)", payload: "FLOW_GUIDE:SEARCH:tag:Vastu-East" },
+            { label: "West (Gains/Space)", payload: "FLOW_GUIDE:SEARCH:tag:Vastu-West" },
             { label: "Show All Vastu", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls'" }
           ]
         };
@@ -290,7 +290,6 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           type: "carousel",
           carousel: searchResult.data || [],
           actions: [
-            { label: "Needs More Luxury ✨", payload: `FLOW_GUIDE:REFINE:${query}:LUXURY` },
             { label: "Needs More Calm 🌿", payload: `FLOW_GUIDE:REFINE:${query}:CALM` },
             { label: "Under ₹5000 💰", payload: `FLOW_GUIDE:REFINE:${query}:BUDGET` },
             { label: "Start Over 🏠", payload: "RESET_FLOW" }
@@ -301,23 +300,13 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         const query = parts[2];
         const refinement = parts[3];
 
-        let newQuery = query;
-        let budgetFilter = null;
-
-        if (refinement === "LUXURY") newQuery += " Luxury Gold Premium";
-        if (refinement === "CALM") newQuery += " Nature Peace Zen";
-        if (refinement === "VASTU") newQuery += " Vastu";
-        if (refinement === "COLORFUL") newQuery += " Colorful Vibrant";
-        if (refinement === "BUDGET") budgetFilter = "Mid";
-
-        const searchResult = await executeSearch(admin, newQuery, { budget: budgetFilter });
+        // Ensure we pass the query back up correctly
+        const searchResult = await executeSearch(admin, query, { budget: refinement === "BUDGET" ? "Mid" : null });
         responseData = {
           reply: `Perfect! I've refined the results for you. ✨\n\nShall we keep tweaking?`,
           type: "carousel",
           carousel: searchResult.data || [],
           actions: [
-            { label: "Add Vastu Magic 🧭", payload: `FLOW_GUIDE:REFINE:${newQuery}:VASTU` },
-            { label: "Make it more Colorful 🌈", payload: `FLOW_GUIDE:REFINE:${newQuery}:COLORFUL` },
             { label: "Show Different Styles", payload: `FLOW_GUIDE:OTHERS` },
             { label: "Start Over 🏠", payload: "RESET_FLOW" }
           ]
@@ -333,6 +322,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       if (searchResult.data && searchResult.data.length > 0) {
         responseData = {
           reply: `Here are some ${userMessage} options I found for you! ✨\n\nWould you like to refine this search or try something else?`,
+          type: "carousel",
           carousel: searchResult.data,
           actions: [
             { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
@@ -366,56 +356,79 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 async function executeSearch(admin, query, filters) {
   const { budget } = filters;
 
-  // Construct Query: Handle both Collections and Freeform Text
-  let finalQuery = query;
-
-  if (query.includes("collection:")) {
-    // If the frontend explicitly passed a collection (e.g., from Guided Flow)
-    // pass it verbatim so Shopify filters by collection title properly.
-    finalQuery = query;
-  } else {
-    // Freeform Text: break the query into words and search tags OR titles
-    const words = query.split(' ').filter(w => w.trim().length > 2);
-    if (words.length > 0) {
-      finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
-    }
-  }
-
+  let products = [];
   console.log("------------------- EXECUTE SEARCH TRIGGERED -------------------");
   console.log("RAW QUERY:", query);
-  console.log("FINAL GRAPHQL:", finalQuery);
 
   try {
-    const response = await admin.graphql(
-      `#graphql
-            query ($query: String!) {
-              products(first: 50, query: $query) {
-                edges {
-                  node {
-                    id
-                    title
-                    handle
-                    description(truncateAt: 100)
-                    productType
-                    vendor
-                    tags
-                    variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                    featuredImage { url }
-                    priceRangeV2 { minVariantPrice { amount currencyCode } }
+    if (query.includes("collection:")) {
+      // 1. NATIVE COLLECTION SEARCH
+      const collectionTitle = query.split("collection:")[1].replace(/['"]/g, "").trim();
+      console.log("FETCHING COLLECTION:", collectionTitle);
+
+      const response = await admin.graphql(
+        `#graphql
+          query ($ctitle: String!) {
+            collections(first: 1, query: $ctitle) {
+              edges {
+                node {
+                  products(first: 20) {
+                    edges {
+                      node {
+                        id title handle description(truncateAt: 100) productType vendor tags
+                        variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                        featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                      }
+                    }
                   }
                 }
               }
-            }`,
-      { variables: { query: finalQuery } }
-    );
+            }
+          }`,
+        { variables: { ctitle: `title:'${collectionTitle}'` } }
+      );
 
-    const json = await response.json();
-    let products = json.data?.products?.edges.map(e => e.node) || [];
+      const json = await response.json();
+      const colNode = json.data?.collections?.edges[0]?.node;
+      products = colNode?.products?.edges.map(e => e.node) || [];
+
+    } else {
+      // 2. TAG OR FREEFORM SEARCH
+      let finalQuery = query;
+      if (query.includes("tag:")) {
+        finalQuery = query; // Use exactly as passed e.g., 'tag:Vastu-North'
+      } else {
+        const words = query.split(' ').filter(w => w.trim().length > 2);
+        if (words.length > 0) {
+          finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+        } else {
+          // If no meaningful words, prevent empty query which fetches all products
+          finalQuery = "title:''";
+        }
+      }
+
+      console.log("FINAL GRAPHQL PRODUCTS QUERY:", finalQuery);
+      const response = await admin.graphql(
+        `#graphql
+          query ($query: String!) {
+            products(first: 20, query: $query) {
+              edges {
+                node {
+                  id title handle description(truncateAt: 100) productType vendor tags
+                  variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                  featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                }
+              }
+            }
+          }`,
+        { variables: { query: finalQuery } }
+      );
+
+      const json = await response.json();
+      products = json.data?.products?.edges.map(e => e.node) || [];
+    }
 
     console.log("GRAPHQL RESPONSE COUNT:", products.length);
-    if (products.length === 0) {
-      console.log("FULL JSON ERROR RESPONSE DUMP?:", JSON.stringify(json));
-    }
 
     // Apply Budget Filter in Memory
     if (budget) {
