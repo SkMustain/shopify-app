@@ -7,19 +7,21 @@ export const loader = async ({ request }) => {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  // Debug Print: Check if ANY products exist with Nature
+  // Debug Print: Check store products to see what tags/titles actually exist
   if (admin) {
     try {
       const res = await admin.graphql(`
         query {
-          products(first: 5, query: "(title:Nature* OR tag:Nature*)") {
+          products(first: 20) {
             edges { node { title tags variants(first: 1) { edges { node { id, price { amount } } } } } }
           }
         }
        `);
       const json = await res.json();
-      console.log("=== DEBUG: API PROXY LOAD - NATURE SEARCH ===");
-      console.log(JSON.stringify(json.data.products.edges, null, 2));
+      console.log("=== DEBUG: STORE INVENTORY DUMP ===");
+      json.data.products.edges.forEach(edge => {
+        console.log(`Title: "${edge.node.title}" | Tags: ${JSON.stringify(edge.node.tags)}`);
+      });
     } catch (e) {
       console.log("Debug Search Error:", e);
     }
