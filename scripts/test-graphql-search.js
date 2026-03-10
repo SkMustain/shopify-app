@@ -15,7 +15,7 @@ const shopify = shopifyApi({
 async function runTest() {
   const prisma = new PrismaClient();
   const session = await prisma.session.findFirst({
-    where: { shop: { contains: 'myshopify.com' } }
+    orderBy: { shop: 'desc' }
   });
 
   if (!session) {
@@ -27,32 +27,24 @@ async function runTest() {
   const client = new shopify.clients.Graphql({ session });
 
   try {
-    const colName = 'Nature & Landscapes';
-    console.log(`Searching for collection EXACT: '${colName}'...`);
+    const q = 'tag:Vastu-North';
+    console.log(`Searching for: products(query: "${q}")`);
 
-    // Step 1: Get all collections
     const r1 = await client.request(`
-      query { collections(first: 100) { edges { node { id, title } } } }
+      query {
+        products(first: 20, query: "${q}") {
+          edges { node { id, title, tags } }
+        }
+      }
     `);
 
-    const allCols = r1.data.collections.edges;
-    const exactMatch = allCols.find(e => e.node.title.trim().toLowerCase() === colName.toLowerCase());
-
-    if (exactMatch) {
-      console.log("Found ID:", exactMatch.node.id);
-      const r2 = await client.request(`
-          query {
-            collection(id: "${exactMatch.node.id}") {
-              products(first: 5) { edges { node { title } } }
-            }
-          }
-       `);
-      console.log("Products:", JSON.stringify(r2.data, null, 2));
-    } else {
-      console.log("NOT FOUND IN", allCols.map(a => a.node.title));
+    const prods = r1.data.products.edges;
+    console.log("Products found:", prods.length);
+    if (prods.length > 0) {
+      console.log(JSON.stringify(prods, null, 2));
     }
   } catch (e) {
-    console.error("Error fetching collection:", e.message);
+    console.error("Error fetching products:", e.message);
   }
 }
 

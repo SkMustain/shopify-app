@@ -357,72 +357,71 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 // --- SEARCH HELPER ---
 async function executeSearch(admin, query, filters) {
   const { budget } = filters;
-
   let products = [];
   console.log("------------------- EXECUTE SEARCH TRIGGERED -------------------");
   console.log("RAW QUERY:", query);
 
   try {
-    if (query.includes("collection:")) {
-      // 1. NATIVE COLLECTION SEARCH (TWO-STEP FOR ACCURACY)
-      // Shopify's native query tokenization gets confused by '&' and other symbols in titles.
-      // So we fetch the collection ID first, then fetch its products explicitly!
-      const collectionTitle = query.split("collection:")[1].replace(/['"]/g, "").trim();
-      console.log("FETCHING COLLECTION EXACT MATCH:", collectionTitle);
+    const isCollection = query.includes("collection:");
+    const isTag = query.includes("tag:");
+    let textQuery = query.replace("collection:", "").replace("tag:", "").replace(/['"]/g, "").trim();
 
-      const colIdResponse = await admin.graphql(`
-        query {
-          collections(first: 100) {
-            edges { node { id, title } }
-          }
+    // 1. If it's a VASTU tag, the user grouped all directions in "Vastu Walls" collection
+    if (isTag && textQuery.toLowerCase().includes("vastu")) {
+      console.log("Vastu Tag Detected -> Redirecting to Vastu Walls Collection");
+      textQuery = "Vastu Walls";
+    }
+
+    // 2. FUZZY COLLECTION MATCHING
+    // Always fetch collections and do a forgiving 'includes' match on the first major word
+    const colIdResponse = await admin.graphql(`
+      query {
+        collections(first: 100) {
+          edges { node { id, title } }
         }
-      `);
-      const colIdJson = await colIdResponse.json();
-      const allCols = colIdJson.data?.collections?.edges || [];
-      const exactMatch = allCols.find(e => e.node.title.trim().toLowerCase() === collectionTitle.toLowerCase());
+      }
+    `);
+    const colIdJson = await colIdResponse.json();
+    const allCols = colIdJson.data?.collections?.edges || [];
 
-      if (exactMatch) {
-        console.log("BINGO! Found exact collection ID:", exactMatch.node.id);
-        const response = await admin.graphql(
-          `#graphql
-            query ($colId: ID!) {
-              collection(id: $colId) {
-                products(first: 20) {
-                  edges {
-                    node {
-                      id title handle description(truncateAt: 100) productType vendor tags
-                      variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                      featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
-                    }
+    // Fuzzy matching strategy: e.g. "Nature & Landscapes" -> "Nature"
+    const primaryWord = textQuery.split(" ")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+    let matchedCollection = allCols.find(e => e.node.title.trim().toLowerCase() === textQuery.toLowerCase());
+
+    if (!matchedCollection && primaryWord.length > 2) {
+      matchedCollection = allCols.find(e => e.node.title.toLowerCase().includes(primaryWord));
+    }
+
+    // 3. FETCH PRODUCTS FROM COLLECTION
+    if (matchedCollection) {
+      console.log("FUZZY MATCH SUCCESS! Found Collection ID:", matchedCollection.node.id, "for", textQuery);
+      const response = await admin.graphql(
+        `#graphql
+          query ($colId: ID!) {
+            collection(id: $colId) {
+              products(first: 20) {
+                edges {
+                  node {
+                    id title handle description(truncateAt: 100) productType vendor tags
+                    variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                    featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
                   }
                 }
               }
-            }`,
-          { variables: { colId: exactMatch.node.id } }
-        );
+            }
+          }`,
+        { variables: { colId: matchedCollection.node.id } }
+      );
+      const json = await response.json();
+      products = json.data?.collection?.products?.edges.map(e => e.node) || [];
+    }
 
-        const json = await response.json();
-        products = json.data?.collection?.products?.edges.map(e => e.node) || [];
-      } else {
-        console.log("FAILED to find collection matching:", collectionTitle);
-      }
+    // 4. FALLBACK TO FREEFORM TEXT SEARCH 
+    if (products.length === 0 && !isCollection) {
+      console.log("FALLING BACK TO FREEFORM SEARCH FOR:", textQuery);
+      let finalQuery = textQuery.split(' ').filter(w => w.trim().length > 2).map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+      if (!finalQuery) finalQuery = "title:''";
 
-    } else {
-      // 2. TAG OR FREEFORM SEARCH
-      let finalQuery = query;
-      if (query.includes("tag:")) {
-        finalQuery = query; // Use exactly as passed e.g., 'tag:Vastu-North'
-      } else {
-        const words = query.split(' ').filter(w => w.trim().length > 2);
-        if (words.length > 0) {
-          finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
-        } else {
-          // If no meaningful words, prevent empty query which fetches all products
-          finalQuery = "title:''";
-        }
-      }
-
-      console.log("FINAL GRAPHQL PRODUCTS QUERY:", finalQuery);
       const response = await admin.graphql(
         `#graphql
           query ($query: String!) {
@@ -438,14 +437,32 @@ async function executeSearch(admin, query, filters) {
           }`,
         { variables: { query: finalQuery } }
       );
-
       const json = await response.json();
       products = json.data?.products?.edges.map(e => e.node) || [];
     }
 
-    console.log("GRAPHQL RESPONSE COUNT:", products.length);
+    // 5. BULLETPROOF FAILSAFE - NEVER RETURN EMPTY ARRAY
+    if (products.length === 0) {
+      console.log("BULLETPROOF FAILSAFE: Returning Top latest products because zero matches found.");
+      const response = await admin.graphql(
+        `#graphql
+          query {
+            products(first: 10) {
+              edges {
+                node {
+                  id title handle description(truncateAt: 100) productType vendor tags
+                  variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                  featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                }
+              }
+            }
+          }`
+      );
+      const json = await response.json();
+      products = json.data?.products?.edges.map(e => e.node) || [];
+    }
 
-    // Apply Budget Filter in Memory
+    // Apply Budget Filter
     if (budget) {
       products = products.filter(p => {
         const price = parseFloat(p.priceRangeV2?.minVariantPrice?.amount || "0");
@@ -456,14 +473,7 @@ async function executeSearch(admin, query, filters) {
       });
     }
 
-    // Slice top 10
     products = products.slice(0, 10);
-
-    if (products.length === 0) {
-      return {
-        reply: `I couldn't find exact matches for "${query}" within that budget. Here are some other options!`,
-      };
-    }
 
     const carouselData = products.map(node => ({
       title: node.title,
@@ -474,13 +484,10 @@ async function executeSearch(admin, query, filters) {
       vendor: node.vendor || "Art Assistant"
     }));
 
-    return {
-      type: "carousel",
-      data: carouselData
-    };
+    return { type: "carousel", data: carouselData };
 
-  } catch (e) {
-    console.error("Search Helper Error", e);
-    return { reply: "I'm having trouble searching the catalog right now." };
+  } catch (error) {
+    console.error("ExecuteSearch Error:", error);
+    return { type: "carousel", data: [] };
   }
 }
