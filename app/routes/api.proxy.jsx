@@ -259,10 +259,11 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           reply: "Great! Which direction does your wall face?",
           type: "actions",
           data: [
-            { label: "North (Wealth/Water)", payload: "FLOW_GUIDE:SEARCH:Water Blue" },
-            { label: "South (Fame/Fire)", payload: "FLOW_GUIDE:SEARCH:Red Horses Fire" },
-            { label: "East (Health/Air)", payload: "FLOW_GUIDE:SEARCH:Green Nature Plant" },
-            { label: "West (Gains/Space)", payload: "FLOW_GUIDE:SEARCH:White Gold" }
+            { label: "North (Wealth/Water)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' North" },
+            { label: "South (Fame/Fire)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' South" },
+            { label: "East (Health/Air)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' East" },
+            { label: "West (Gains/Space)", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls' West" },
+            { label: "Show All Vastu", payload: "FLOW_GUIDE:SEARCH:collection:'Vastu Walls'" }
           ]
         };
       }
@@ -272,10 +273,10 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           reply: "Pick a theme that suits your style:",
           type: "actions",
           data: [
-            { label: "Modern Abstract", payload: "FLOW_GUIDE:SEARCH:Modern Abstract" },
-            { label: "Nature & Landscape", payload: "FLOW_GUIDE:SEARCH:Nature Landscape" },
-            { label: "Spiritual & Devotional", payload: "FLOW_GUIDE:SEARCH:Buddha Ganesha Spiritual" },
-            { label: "City & Travel", payload: "FLOW_GUIDE:SEARCH:Cityscape Travel" }
+            { label: "Modern & Abstract", payload: "FLOW_GUIDE:SEARCH:collection:'Modern & Abstract'" },
+            { label: "Nature & Landscapes", payload: "FLOW_GUIDE:SEARCH:collection:'Nature & Landscapes'" },
+            { label: "Spiritual & Religious", payload: "FLOW_GUIDE:SEARCH:collection:'Spiritual & Religious'" },
+            { label: "City & Travel", payload: "FLOW_GUIDE:SEARCH:collection:'Urban & City Life'" }
           ]
         };
       }
@@ -365,13 +366,19 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 async function executeSearch(admin, query, filters) {
   const { budget } = filters;
 
-  // Construct Query: Shopify's default search can be rigid.
-  // We break the query into words and search tags OR titles
-  const words = query.split(' ').filter(w => w.trim().length > 2);
+  // Construct Query: Handle both Collections and Freeform Text
   let finalQuery = query;
-  if (words.length > 0) {
-    // Example: (title:Nature* OR tag:Nature*) AND (title:Landscape* OR tag:Landscape*)
-    finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+
+  if (query.includes("collection:")) {
+    // If the frontend explicitly passed a collection (e.g., from Guided Flow)
+    // pass it verbatim so Shopify filters by collection title properly.
+    finalQuery = query;
+  } else {
+    // Freeform Text: break the query into words and search tags OR titles
+    const words = query.split(' ').filter(w => w.trim().length > 2);
+    if (words.length > 0) {
+      finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+    }
   }
 
   console.log("------------------- EXECUTE SEARCH TRIGGERED -------------------");
