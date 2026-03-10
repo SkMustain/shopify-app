@@ -173,6 +173,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         const searchResult = await executeSearch(admin, query, {});
         responseData = {
           reply: `Here are the perfect matches for your room! ✨\n\nHow would you like to refine these results?`,
+          type: "carousel",
           carousel: searchResult.data || [],
           actions: [
             { label: "Vastu Friendly 🧭", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:VASTU` },
@@ -205,6 +206,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 
         responseData = {
           reply: `I've updated your curation! ✨\n\nWhat other adjustments would you like to make?`,
+          type: "carousel",
           carousel: searchResult.data || [],
           actions: [
             { label: "Add Vastu Magic 🧭", payload: `FLOW_VISUAL:REFINE:${imgId}:${color}:${theme}:VASTU` },
@@ -261,8 +263,10 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       else if (step === "SEARCH") {
         const query = parts[2];
         const searchResult = await executeSearch(admin, query, {});
+
         responseData = {
           reply: `Here are our best picks for you! ✨\n\n**Confidence Booster:** 4.8★ Rated by 1,200+ customers!\n\nTo help you further, what else are you looking for?`,
+          type: "carousel",
           carousel: searchResult.data || [],
           actions: [
             { label: "Needs More Luxury ✨", payload: `FLOW_GUIDE:REFINE:${query}:LUXURY` },
@@ -288,6 +292,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         const searchResult = await executeSearch(admin, newQuery, { budget: budgetFilter });
         responseData = {
           reply: `Perfect! I've refined the results for you. ✨\n\nShall we keep tweaking?`,
+          type: "carousel",
           carousel: searchResult.data || [],
           actions: [
             { label: "Add Vastu Magic 🧭", payload: `FLOW_GUIDE:REFINE:${newQuery}:VASTU` },
