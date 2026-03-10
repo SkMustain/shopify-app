@@ -345,8 +345,14 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 async function executeSearch(admin, query, filters) {
   const { budget } = filters;
 
-  // Construct Query
+  // Construct Query: Shopify's default search can be rigid.
+  // We break the query into words and search tags OR titles
+  const words = query.split(' ').filter(w => w.trim().length > 2);
   let finalQuery = query;
+  if (words.length > 0) {
+    // Example: (title:Nature* OR tag:Nature*) AND (title:Landscape* OR tag:Landscape*)
+    finalQuery = words.map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+  }
 
   try {
     const response = await admin.graphql(
