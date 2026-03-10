@@ -1,77 +1,59 @@
-import { shopifyApi, LATEST_API_VERSION } from '@shopify/shopify-api';
+import '@shopify/shopify-api/adapters/node';
+import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
+import { PrismaClient } from '@prisma/client';
+import "dotenv/config";
 
 const shopify = shopifyApi({
-    apiSecretKey: 'test',
-    apiKey: 'test',
-    adminApiAccessToken: process.env.SHOPIFY_API_KEY,
-    isEmbeddedApp: false,
-    hostName: 'localhost',
-    apiVersion: LATEST_API_VERSION
+  apiSecretKey: 'test',
+  apiKey: 'test',
+  adminApiAccessToken: process.env.SHOPIFY_API_KEY,
+  isEmbeddedApp: false,
+  hostName: 'localhost',
+  apiVersion: ApiVersion.October23
 });
 
-async function testSearch() {
-    // Use the active shop offline session to hit GraphQL API directly
-    // We need the shop domain and an access token from the DB.
+async function runTest() {
+  const prisma = new PrismaClient();
+  const session = await prisma.session.findFirst({
+    where: { shop: { contains: 'myshopify.com' } }
+  });
 
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
+  if (!session) {
+    console.log("No store session found in DB.");
+    return;
+  }
 
-    const session = await prisma.session.findFirst({
-        where: { shop: { contains: 'myshopify.com' } }
-    });
+  console.log("Using store session:", session.shop);
+  const client = new shopify.clients.Graphql({ session });
 
-    if (!session) {
-        console.log("No store session found in DB to test with.");
-        return;
-    }
+  try {
+    const colName = 'Nature & Landscapes';
+    console.log(`Searching for collection EXACT: '${colName}'...`);
 
-    console.log("Testing with shop:", session.shop);
+    // Step 1: Get all collections
+    const r1 = await client.request(`
+      query { collections(first: 100) { edges { node { id, title } } } }
+    `);
 
-    const client = new shopify.clients.Graphql({
-        session: session
-    });
+    const allCols = r1.data.collections.edges;
+    const exactMatch = allCols.find(e => e.node.title.trim().toLowerCase() === colName.toLowerCase());
 
-    const query = `
-    query {
-      products(first: 10, query: "") {
-        edges {
-          node {
-            id
-            title
-            tags
-            status
-          }
-        }
-      }
-    }
-  `;
-
-    try {
-        const response = await client.request(query);
-        console.log("Total products found with empty query (should be all ACTIVE):");
-        console.log(JSON.stringify(response.data, null, 2));
-
-        // Test the specific 'Nature Landscape' query we had generated
-        const specificQuery = `
-      query {
-        products(first: 10, query: "(title:Nature* OR tag:Nature*) AND (title:Landscape* OR tag:Landscape*)") {
-          edges {
-            node {
-              id
-              title
-              tags
+    if (exactMatch) {
+      console.log("Found ID:", exactMatch.node.id);
+      const r2 = await client.request(`
+          query {
+            collection(id: "${exactMatch.node.id}") {
+              products(first: 5) { edges { node { title } } }
             }
           }
-        }
-      }
-    `;
-        const res2 = await client.request(specificQuery);
-        console.log("\\n\\nProducts matching the specific Generated query:");
-        console.log(JSON.stringify(res2.data, null, 2));
-
-    } catch (err) {
-        console.error("GraphQL Error:", err);
+       `);
+      console.log("Products:", JSON.stringify(r2.data, null, 2));
+    } else {
+      console.log("NOT FOUND IN", allCols.map(a => a.node.title));
     }
+  } catch (e) {
+    console.error("Error fetching collection:", e.message);
+  }
 }
 
-testSearch();
+runTest();

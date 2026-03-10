@@ -364,35 +364,48 @@ async function executeSearch(admin, query, filters) {
 
   try {
     if (query.includes("collection:")) {
-      // 1. NATIVE COLLECTION SEARCH
+      // 1. NATIVE COLLECTION SEARCH (TWO-STEP FOR ACCURACY)
+      // Shopify's native query tokenization gets confused by '&' and other symbols in titles.
+      // So we fetch the collection ID first, then fetch its products explicitly!
       const collectionTitle = query.split("collection:")[1].replace(/['"]/g, "").trim();
-      console.log("FETCHING COLLECTION:", collectionTitle);
+      console.log("FETCHING COLLECTION EXACT MATCH:", collectionTitle);
 
-      const response = await admin.graphql(
-        `#graphql
-          query ($ctitle: String!) {
-            collections(first: 1, query: $ctitle) {
-              edges {
-                node {
-                  products(first: 20) {
-                    edges {
-                      node {
-                        id title handle description(truncateAt: 100) productType vendor tags
-                        variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                        featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
-                      }
+      const colIdResponse = await admin.graphql(`
+        query {
+          collections(first: 100) {
+            edges { node { id, title } }
+          }
+        }
+      `);
+      const colIdJson = await colIdResponse.json();
+      const allCols = colIdJson.data?.collections?.edges || [];
+      const exactMatch = allCols.find(e => e.node.title.trim().toLowerCase() === collectionTitle.toLowerCase());
+
+      if (exactMatch) {
+        console.log("BINGO! Found exact collection ID:", exactMatch.node.id);
+        const response = await admin.graphql(
+          `#graphql
+            query ($colId: ID!) {
+              collection(id: $colId) {
+                products(first: 20) {
+                  edges {
+                    node {
+                      id title handle description(truncateAt: 100) productType vendor tags
+                      variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
+                      featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
                     }
                   }
                 }
               }
-            }
-          }`,
-        { variables: { ctitle: `title:'${collectionTitle}'` } }
-      );
+            }`,
+          { variables: { colId: exactMatch.node.id } }
+        );
 
-      const json = await response.json();
-      const colNode = json.data?.collections?.edges[0]?.node;
-      products = colNode?.products?.edges.map(e => e.node) || [];
+        const json = await response.json();
+        products = json.data?.collection?.products?.edges.map(e => e.node) || [];
+      } else {
+        console.log("FAILED to find collection matching:", collectionTitle);
+      }
 
     } else {
       // 2. TAG OR FREEFORM SEARCH
