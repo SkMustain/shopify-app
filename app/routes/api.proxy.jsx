@@ -372,9 +372,11 @@ async function executeSearch(admin, query, filters) {
     const isTag = query.includes("tag:");
     let textQuery = query.replace("collection:", "").replace("tag:", "").replace(/['"]/g, "").trim();
 
-    // 1. If it's a VASTU tag, the user grouped all directions in "Vastu Walls" collection
+    // 1. If it's a VASTU tag, fetch from "Vastu Walls" collection then filter by direction tag
+    let vastuDirectionTag = null;
     if (isTag && textQuery.toLowerCase().includes("vastu")) {
-      console.log("Vastu Tag Detected -> Redirecting to Vastu Walls Collection");
+      console.log("Vastu Tag Detected -> Searching Vastu Walls Collection, then filtering by tag:", textQuery);
+      vastuDirectionTag = textQuery; // e.g. "Vastu-North"
       textQuery = "Vastu Walls";
     }
 
@@ -420,6 +422,21 @@ async function executeSearch(admin, query, filters) {
       );
       const json = await response.json();
       products = json.data?.collection?.products?.edges.map(e => e.node) || [];
+
+      // If searching by specific Vastu direction, filter by that tag
+      if (vastuDirectionTag && products.length > 0) {
+        const tagLower = vastuDirectionTag.toLowerCase();
+        const filtered = products.filter(p =>
+          p.tags && p.tags.some(t => t.toLowerCase() === tagLower)
+        );
+        // Only apply filter if it returns results; otherwise show all Vastu
+        if (filtered.length > 0) {
+          products = filtered;
+          console.log(`Vastu Direction Filter: ${filtered.length} products matched tag '${vastuDirectionTag}'`);
+        } else {
+          console.log(`Vastu Direction Filter: No products matched tag '${vastuDirectionTag}', showing all Vastu`);
+        }
+      }
     }
 
     // 4. FALLBACK TO FREEFORM TEXT SEARCH 
