@@ -15,11 +15,19 @@
       <div class="visualizer-body">
         
         <div class="visualizer-controls" id="visualizer-controls-{{ block.id }}">
-           <label for="visualizer-upload-{{ block.id }}" class="upload-label">
-             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-             Upload Wall Photo
-           </label>
-           <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
+           <div class="action-buttons-group" id="action-buttons-{{ block.id }}">
+             <label for="visualizer-camera-{{ block.id }}" class="upload-label camera-label">
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+               Take Photo
+             </label>
+             <input type="file" id="visualizer-camera-{{ block.id }}" accept="image/*" capture="environment" hidden>
+
+             <label for="visualizer-upload-{{ block.id }}" class="upload-label">
+               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+               Upload Photo
+             </label>
+             <input type="file" id="visualizer-upload-{{ block.id }}" accept="image/*" hidden>
+           </div>
            <p class="instructions hidden" id="viz-inst-{{ block.id }}">Drag art to move. Use controls below to adjust 3D perspective.</p>
         </div>
 
@@ -43,7 +51,7 @@
            
            <div class="empty-state" id="empty-state-{{ block.id }}">
              <div class="empty-icon">📸</div>
-             <p>Upload a photo of your room to test this painting with Pro 3D controls.</p>
+             <p>Take or upload a photo of your room to test this painting with Pro 3D controls.</p>
            </div>
         </div>
 
@@ -83,6 +91,10 @@
 
 <style>
   /* Base Reset */
+  .art-visualizer-container {
+    position: relative;
+    z-index: 101; /* Keep above header (z-index 100) */
+  }
   .art-visualizer-container * { box-sizing: border-box; }
 
   /* Button Styles */
@@ -129,20 +141,20 @@
   .visualizer-header {
     background: rgba(10,10,10,0.95);
     backdrop-filter: blur(10px);
-    padding: 18px 25px;
+    padding: 10px 15px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     color: white;
   }
-  .visualizer-header h2 { margin: 0; font-size: 1.1rem; font-weight: 600; letter-spacing: 0.5px; color: #ffd700; }
+  .visualizer-header h2 { margin: 0; font-size: 0.95rem; font-weight: 600; letter-spacing: 0.5px; color: #ffd700; }
   .close-btn {
     background: rgba(255,255,255,0.1);
     border: none;
-    width: 36px; height: 36px;
+    width: 28px; height: 28px;
     border-radius: 50%;
-    font-size: 20px;
+    font-size: 18px;
     cursor: pointer;
     color: #fff;
     display: flex; align-items: center; justify-content: center;
@@ -166,23 +178,34 @@
     text-align: center;
     pointer-events: none; 
   }
+  .action-buttons-group {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: none;
+  }
   .upload-label {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 14px 28px;
+    gap: 6px;
+    padding: 8px 16px;
     background: linear-gradient(135deg, #fff, #f0f0f0);
     color: #000;
     border-radius: 30px;
     font-weight: 700;
-    font-size: 15px;
+    font-size: 13px;
     cursor: pointer;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     pointer-events: auto;
     transition: transform 0.2s;
   }
+  .camera-label {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    box-shadow: 0 10px 30px rgba(255,215,0,0.3);
+  }
+  .upload-label svg { width: 14px; height: 14px; }
   .upload-label:active { transform: scale(0.95); }
-  .instructions { margin: 15px auto 0; font-size: 13px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.8); padding: 8px 18px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.8); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); }
+  .instructions { margin: 10px auto 0; font-size: 12px; color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.8); padding: 6px 14px; border-radius: 20px; display: inline-block; text-shadow: 0 1px 2px rgba(0,0,0,0.8); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); }
 
   /* Canvas Area */
   .visualizer-canvas {
@@ -294,10 +317,10 @@
   .tuning-panel {
     background: rgba(10, 10, 10, 0.98);
     border-top: 1px solid rgba(255, 215, 0, 0.2);
-    padding: 15px 20px;
+    padding: 10px 15px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     z-index: 20;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.8);
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
@@ -308,9 +331,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 5px;
+      margin-bottom: 2px;
   }
-  .tuning-header h3 { margin: 0; color: #ffd700; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .tuning-header h3 { margin: 0; color: #ffd700; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
   
   .reset-btn {
       background: rgba(255,255,255,0.1);
@@ -330,18 +353,18 @@
 
   .sliders-container {
       display: grid;
-      gap: 12px;
+      gap: 10px;
       /* Scroll on very small screens if needed */
-      max-height: 30vh;
+      max-height: 25vh;
       overflow-y: auto;
       padding-right: 5px;
   }
 
-  .slider-group { display: flex; flex-direction: column; gap: 6px; }
+  .slider-group { display: flex; flex-direction: column; gap: 4px; }
   .slider-group label {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 11px;
     color: rgba(255,255,255,0.6);
     font-weight: 500;
   }
@@ -362,13 +385,13 @@
     border-radius: 10px;
   }
   .slider-group input[type=range]::-webkit-slider-thumb {
-    height: 18px;
-    width: 18px;
+    height: 14px;
+    width: 14px;
     border-radius: 50%;
     background: #ffd700; /* Gold handle */
     cursor: pointer;
     -webkit-appearance: none;
-    margin-top: -7px;
+    margin-top: -5px;
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
     border: 2px solid #000;
   }
@@ -376,21 +399,21 @@
   /* Footer Actions */
   .visualizer-footer {
     background: #000;
-    padding: 15px 20px;
+    padding: 10px 15px;
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     border-top: 1px solid rgba(255,255,255,0.05);
-    padding-bottom: env(safe-area-inset-bottom, 20px); 
+    padding-bottom: env(safe-area-inset-bottom, 12px); 
   }
   .visualizer-footer button {
-    padding: 14px 24px;
+    padding: 10px 18px;
     border-radius: 50px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 13px;
     cursor: pointer;
     flex: 1;
-    max-width: 250px;
+    max-width: 220px;
     transition: all 0.2s;
   }
   .viz-btn-outline { background: #1a1a1a; color: white; border: 1px solid rgba(255,255,255,0.1); }
@@ -409,6 +432,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById(`visualizer-modal-${blockId}`);
     const closeBtn = document.getElementById(`visualizer-close-${blockId}`);
     const uploadInput = document.getElementById(`visualizer-upload-${blockId}`);
+    const cameraInput = document.getElementById(`visualizer-camera-${blockId}`);
     
     // Canvas & 3D Elements
     const bgImg = document.getElementById(`room-bg-${blockId}`);
@@ -434,6 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const footer = document.getElementById(`viz-footer-${blockId}`);
     const reuploadBtn = document.getElementById(`viz-reupload-${blockId}`);
     const doneBtn = document.getElementById(`viz-done-${blockId}`);
+    const actionButtonsGroup = document.getElementById(`action-buttons-${blockId}`);
 
     if (!triggerBtn) return;
 
@@ -505,7 +530,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resetBtn.addEventListener('click', reset3DControls);
 
     // --- Image Upload ---
-    uploadInput.addEventListener('change', (e) => {
+    const handleImageFile = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
@@ -516,7 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 emptyState.style.display = 'none';
                 
                 // Show Pro tuning panel
-                topControls.querySelector('.upload-label').style.display = 'none';
+                if (actionButtonsGroup) actionButtonsGroup.style.display = 'none';
                 instructions.classList.remove('hidden');
                 tuningPanel.classList.remove('hidden');
                 footer.classList.remove('hidden');
@@ -528,7 +553,10 @@ document.addEventListener("DOMContentLoaded", () => {
             };
             reader.readAsDataURL(file);
         }
-    });
+    };
+    
+    uploadInput.addEventListener('change', handleImageFile);
+    if (cameraInput) cameraInput.addEventListener('change', handleImageFile);
 
     // --- Slider Listeners ---
     sizeSlider.addEventListener('input', (e) => {
