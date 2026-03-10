@@ -282,7 +282,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       }
 
       else if (step === "SEARCH") {
-        const query = parts[2];
+        const query = parts.slice(2).join(":");
         const searchResult = await executeSearch(admin, query, {});
 
         responseData = {
@@ -297,8 +297,10 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         };
       }
       else if (step === "REFINE") {
-        const query = parts[2];
-        const refinement = parts[3];
+        // Find where the refinement stops (the last part is the refinement type)
+        // Everything between index 2 and length-1 is the query.
+        const refinement = parts[parts.length - 1];
+        const query = parts.slice(2, -1).join(":");
 
         // Ensure we pass the query back up correctly
         const searchResult = await executeSearch(admin, query, { budget: refinement === "BUDGET" ? "Mid" : null });
