@@ -52,6 +52,10 @@
            <div class="empty-state" id="empty-state-{{ block.id }}">
              <div class="empty-icon">📸</div>
              <p>Take or upload a photo of your room to test this painting with Pro 3D controls.</p>
+             <label for="visualizer-upload-{{ block.id }}" class="upload-label" style="margin-top: 20px; padding: 12px 24px; font-size: 16px;">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+               Upload Room Photo
+             </label>
            </div>
         </div>
 
@@ -93,7 +97,7 @@
   /* Base Reset */
   .art-visualizer-container {
     position: relative;
-    z-index: 101; /* Keep above header (z-index 100) */
+    z-index: 999; /* Keep above header */
   }
   .art-visualizer-container * { box-sizing: border-box; }
 
