@@ -616,18 +616,35 @@
         if (!clean || clean.length < 3) return;
 
         const utterance = new SpeechSynthesisUtterance(clean);
-        utterance.lang = 'en-IN';  // Indian English for natural store context
-        utterance.rate = 1.05;     // Slightly faster for snappy feel
-        utterance.pitch = 1.0;
-        utterance.volume = 0.9;
+        utterance.lang = 'en-IN';  // Indian English accent
+        utterance.rate = 0.95;     // Slightly slower for warm, friendly feel
+        utterance.pitch = 1.1;     // Slightly higher for welcoming Indian tone
+        utterance.volume = 1.0;
 
-        // Try to pick a good voice
+        // Aggressively pick the best Indian-accented voice available
         const voices = synth.getVoices();
-        const preferred = voices.find(v => v.lang === 'en-IN' && v.name.includes('Female'))
-                       || voices.find(v => v.lang === 'en-IN')
-                       || voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
-                       || voices.find(v => v.lang.startsWith('en'));
-        if (preferred) utterance.voice = preferred;
+        const preferred = 
+             // 1. Best: Google's Indian English female voice (Chrome)
+             voices.find(v => v.name.includes('Google') && v.lang === 'en-IN')
+             // 2. Microsoft Neerja - Indian English (Edge/Windows)
+          || voices.find(v => v.name.includes('Neerja'))
+             // 3. Any en-IN female voice
+          || voices.find(v => v.lang === 'en-IN' && /female|woman/i.test(v.name))
+             // 4. Any en-IN voice at all
+          || voices.find(v => v.lang === 'en-IN')
+             // 5. Hindi voice as fallback (still Indian accent)
+          || voices.find(v => v.lang === 'hi-IN')
+             // 6. Any voice with "India" in the name
+          || voices.find(v => /india/i.test(v.name))
+             // 7. Generic Google English voice
+          || voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))
+             // 8. Any English voice as last resort
+          || voices.find(v => v.lang.startsWith('en'));
+        if (preferred) {
+          utterance.voice = preferred;
+          // If we got a Hindi voice, keep lang as en-IN so it speaks English with Hindi accent
+          if (preferred.lang === 'hi-IN') utterance.lang = 'en-IN';
+        }
 
         synth.speak(utterance);
         return utterance;
