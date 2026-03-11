@@ -248,8 +248,12 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
           reply: "I’ll help you choose something stunning ✨\nWhat kind of paintings are you looking for?",
           type: "actions",
           data: [
-            { label: "🧭 Vastu Friendly Paintings", payload: "FLOW_GUIDE:VASTU" },
-            { label: "🎨 Other Themes", payload: "FLOW_GUIDE:OTHERS" }
+            { label: "🧭 Vastu Friendly", payload: "FLOW_GUIDE:VASTU" },
+            { label: "✨ Zodiac Signs", payload: "FLOW_GUIDE:ZODIAC" },
+            { label: "🌈 Pick by Color", payload: "FLOW_GUIDE:COLORS" },
+            { label: "🎨 Styles & Vibes", payload: "FLOW_GUIDE:STYLES" },
+            { label: "🕊️ Subjects & Themes", payload: "FLOW_GUIDE:SUBJECTS" },
+            { label: "🏠 Shop by Room", payload: "FLOW_GUIDE:ROOMS" }
           ]
         };
       }
@@ -268,21 +272,88 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         };
       }
 
-      else if (step === "OTHERS") {
+      else if (step === "ZODIAC") {
         responseData = {
-          reply: "Pick a theme that suits your style:",
+          reply: "Select your Zodiac sign to find art that resonates with your energy 🌟",
+          type: "actions",
+          data: [
+            { label: "♈ Aries", payload: "FLOW_GUIDE:SEARCH:tag:ARIES" },
+            { label: "♉ Taurus", payload: "FLOW_GUIDE:SEARCH:tag:TAURUS" },
+            { label: "♊ Gemini", payload: "FLOW_GUIDE:SEARCH:tag:GEMINI" },
+            { label: "♋ Cancer", payload: "FLOW_GUIDE:SEARCH:tag:CANCER" },
+            { label: "♌ Leo", payload: "FLOW_GUIDE:SEARCH:tag:LEO" },
+            { label: "♍ Virgo", payload: "FLOW_GUIDE:SEARCH:tag:VIRGO" },
+            { label: "♎ Libra", payload: "FLOW_GUIDE:SEARCH:tag:LIBRA" },
+            { label: "♏ Scorpio", payload: "FLOW_GUIDE:SEARCH:tag:SCORPIO" },
+            { label: "♐ Sagittarius", payload: "FLOW_GUIDE:SEARCH:tag:SAGITTARIUS" },
+            { label: "♑ Capricorn", payload: "FLOW_GUIDE:SEARCH:tag:CAPRICORN" },
+            { label: "♒ Aquarius", payload: "FLOW_GUIDE:SEARCH:tag:AQUARIUS" },
+            { label: "♓ Pisces", payload: "FLOW_GUIDE:SEARCH:tag:PISCES" }
+          ]
+        };
+      }
+
+      else if (step === "COLORS") {
+        responseData = {
+          reply: "What color palette fits your space? 🎨",
+          type: "actions",
+          data: [
+            { label: "🟡 Gold/Yellow", payload: "FLOW_GUIDE:SEARCH:tag:Gold OR tag:Yellow" },
+            { label: "🔵 Blue/Navy", payload: "FLOW_GUIDE:SEARCH:tag:Blue OR tag:Navy" },
+            { label: "🔴 Red/Pink", payload: "FLOW_GUIDE:SEARCH:tag:Red OR tag:Pink" },
+            { label: "🟢 Green", payload: "FLOW_GUIDE:SEARCH:tag:Green" },
+            { label: "🟤 Brown/Wood", payload: "FLOW_GUIDE:SEARCH:tag:Brown" },
+            { label: "⚪ White/Silver", payload: "FLOW_GUIDE:SEARCH:tag:White OR tag:Silver" },
+            { label: "⚫ Black", payload: "FLOW_GUIDE:SEARCH:tag:Black" },
+            { label: "🌈 Colorful/Splash", payload: "FLOW_GUIDE:SEARCH:tag:Colorful OR tag:color splash" }
+          ]
+        };
+      }
+
+      else if (step === "STYLES") {
+        responseData = {
+          reply: "Choose an artistic style or vibe:",
+          type: "actions",
+          data: [
+            { label: "❇️ Abstract & Modern", payload: "FLOW_GUIDE:SEARCH:tag:Abstract OR tag:Modern" },
+            { label: "🕰️ Vintage & Classic", payload: "FLOW_GUIDE:SEARCH:tag:Vintage OR tag:traditional painting" },
+            { label: "🖌️ Watercolor & Painterly", payload: "FLOW_GUIDE:SEARCH:tag:Watercolor" },
+            { label: "➖ Minimalism", payload: "FLOW_GUIDE:SEARCH:tag:Minimalism" },
+            { label: "🌆 Cyberpunk/Futuristic", payload: "FLOW_GUIDE:SEARCH:tag:Cyberpunk OR tag:Futuristic" },
+            { label: "😌 Calm & Serene", payload: "FLOW_GUIDE:SEARCH:tag:Serenity OR tag:Tranquility" },
+            { label: "🔥 Energetic & Dynamic", payload: "FLOW_GUIDE:SEARCH:tag:Energetic OR tag:Positive Energy" }
+          ]
+        };
+      }
+
+      else if (step === "SUBJECTS") {
+        responseData = {
+          reply: "What subject are you most interested in?",
+          type: "actions",
+          data: [
+            { label: "🪷 Buddha", payload: "FLOW_GUIDE:SEARCH:tag:Buddha" },
+            { label: "🐘 Lord Ganesha", payload: "FLOW_GUIDE:SEARCH:tag:Ganesha" },
+            { label: "🕉️ Shiva & Krishna", payload: "FLOW_GUIDE:SEARCH:tag:Shiva OR tag:Krishna" },
+            { label: "🌿 Nature & Landscapes", payload: "FLOW_GUIDE:SEARCH:tag:Landscape OR tag:Nature" },
+            { label: "🏙️ Cityscapes & Travel", payload: "FLOW_GUIDE:SEARCH:tag:Cityscape OR tag:travel art" },
+            { label: "🦅 Birds & Animals", payload: "FLOW_GUIDE:SEARCH:tag:Bird OR tag:Animal" },
+            { label: "❤️ Love & Romance", payload: "FLOW_GUIDE:SEARCH:tag:romantic" }
+          ]
+        };
+      }
+
+      else if (step === "ROOMS") {
+        responseData = {
+          reply: "Which room are you decorating?",
           type: "actions",
           data: [
             { label: "🛋 Living Room", payload: "FLOW_GUIDE:SEARCH:collection:'Living Room'" },
             { label: "🛏 Bedroom", payload: "FLOW_GUIDE:SEARCH:collection:'Bedroom'" },
             { label: "🏨 Hotel", payload: "FLOW_GUIDE:SEARCH:collection:'Hotel'" },
-            { label: "⭐ Best Sellers", payload: "FLOW_GUIDE:SEARCH:collection:'Best Sellers'" },
             { label: "🧒 Kids Room", payload: "FLOW_GUIDE:SEARCH:collection:'Kids Room'" },
             { label: "🖼 Multiple Frames", payload: "FLOW_GUIDE:SEARCH:collection:'Multiple Frames'" },
-            { label: "💕 Love & Romance", payload: "FLOW_GUIDE:SEARCH:collection:'Love & Romance'" },
-            { label: "🎨 Gen Z Art", payload: "FLOW_GUIDE:SEARCH:collection:'Gen Z Art'" },
-            { label: "🌧 Monsoon", payload: "FLOW_GUIDE:SEARCH:collection:'Monsoon'" },
-            { label: "🪷 Lord Buddha", payload: "FLOW_GUIDE:SEARCH:collection:'Lord Buddha Wall Art'" }
+            { label: "⭐ Best Sellers", payload: "FLOW_GUIDE:SEARCH:collection:'Best Sellers'" },
+            { label: "🎨 Gen Z Art", payload: "FLOW_GUIDE:SEARCH:collection:'Gen Z Art'" }
           ]
         };
       }
@@ -291,15 +362,30 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         const query = parts.slice(2).join(":");
         const searchResult = await executeSearch(admin, query, {});
 
+        // Determine context-aware follow-up actions based on the query that was passed
+        let followUpActions = [
+          { label: "Under ₹5000 💰", payload: `FLOW_GUIDE:REFINE:${query}:BUDGET` },
+          { label: "Try Different Category 🔄", payload: "FLOW_GUIDE:START" }
+        ];
+
+        // Specific context clues
+        if (query.includes("tag:ARIES") || query.includes("TAURUS")) {
+          followUpActions.unshift({ label: "Try Different Zodiac ✨", payload: "FLOW_GUIDE:ZODIAC" });
+        } else if (query.includes("tag:Red") || query.includes("Blue") || query.includes("Color")) {
+          followUpActions.unshift({ label: "Try Another Color 🌈", payload: "FLOW_GUIDE:COLORS" });
+        } else if (query.includes("tag:Abstract") || query.includes("Vintage")) {
+          followUpActions.unshift({ label: "Try Another Style 🎨", payload: "FLOW_GUIDE:STYLES" });
+        } else if (query.includes("tag:Buddha") || query.includes("Nature")) {
+          followUpActions.unshift({ label: "Try Different Subject 🕊️", payload: "FLOW_GUIDE:SUBJECTS" });
+        } else if (query.includes("collection")) {
+          followUpActions.unshift({ label: "Browse Another Room 🏠", payload: "FLOW_GUIDE:ROOMS" });
+        }
+
         responseData = {
-          reply: `Here are our best picks for you! ✨\n\n**Confidence Booster:** 4.8★ Rated by 1,200+ customers!\n\nTo help you further, what else are you looking for?`,
+          reply: `Here are our best matching picks for you! ✨\n\nTo explore further, what would you like to do?`,
           type: "carousel",
           carousel: searchResult.data || [],
-          actions: [
-            { label: "Needs More Calm 🌿", payload: `FLOW_GUIDE:REFINE:${query}:CALM` },
-            { label: "Under ₹5000 💰", payload: `FLOW_GUIDE:REFINE:${query}:BUDGET` },
-            { label: "Start Over 🏠", payload: "RESET_FLOW" }
-          ]
+          actions: followUpActions
         };
       }
       else if (step === "REFINE") {
@@ -311,12 +397,12 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         // Ensure we pass the query back up correctly
         const searchResult = await executeSearch(admin, query, { budget: refinement === "BUDGET" ? "Mid" : null });
         responseData = {
-          reply: `Perfect! I've refined the results for you. ✨\n\nShall we keep tweaking?`,
+          reply: `Perfect! I've refined the results for you. ✨\n\nShall we keep exploring?`,
           type: "carousel",
           carousel: searchResult.data || [],
           actions: [
-            { label: "Show Different Styles", payload: `FLOW_GUIDE:OTHERS` },
-            { label: "Start Over 🏠", payload: "RESET_FLOW" }
+            { label: "Try A New Search 🔄", payload: `FLOW_GUIDE:START` },
+            { label: "📸 Upload Room Photo", payload: "FLOW_VISUAL:START" }
           ]
         };
       }
