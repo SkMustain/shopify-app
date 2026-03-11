@@ -35,6 +35,7 @@
                     <button id="art-assistant-upload-btn" class="art-icon-btn">📷</button>
                     <input type="file" id="art-assistant-file-input" hidden accept="image/*">
                     <input type="text" id="art-assistant-input" placeholder="Type a message..." />
+                    <button id="art-assistant-voice-toggle" class="art-icon-btn art-voice-on" title="Toggle Voice">🔊</button>
                     <button id="art-assistant-send-btn" class="art-send-btn">➤</button>
                 </div>
             </div>
@@ -533,6 +534,24 @@
       }
   }
   @keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+  /* --- VOICE TOGGLE --- */
+  .art-voice-on { color: #5e17eb; position: relative; }
+  .art-voice-off { color: #aaa; position: relative; }
+  .art-voice-off::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 24px; height: 2px;
+    background: #e74c3c;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    border-radius: 2px;
+  }
+  /* Speaking indicator pulse on the bot message */
+  .art-message.bot.speaking {
+    box-shadow: 0 0 0 2px rgba(94, 23, 235, 0.3);
+    transition: box-shadow 0.3s ease;
+  }
 </style>
 
 <script>
@@ -574,6 +593,68 @@
       let selectedImage = null;
       let recognition = null;
       let isListening = false;
+      let voiceEnabled = true;
+
+      // --- TEXT-TO-SPEECH ENGINE ---
+      const synth = window.speechSynthesis;
+
+      function speakText(text) {
+        if (!voiceEnabled || !synth) return;
+        // Cancel any ongoing speech first
+        synth.cancel();
+
+        // Clean text for natural speech: strip emojis, markdown, HTML, special chars
+        let clean = text
+          .replace(/<[^>]*>/g, '')                       // Remove HTML tags
+          .replace(/\*\*(.*?)\*\*/g, '$1')                // Remove bold **markdown**
+          .replace(/\n/g, '. ')                           // Newlines become pauses
+          .replace(/[\u{1F600}-\u{1F9FF}\u{2600}-\u{2B55}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{1F1E0}-\u{1F1FF}\u{E0020}-\u{E007F}]/gu, '') // Strip emojis
+          .replace(/[★✨🌟💰🔄🏠📸❇️🕰️🖌️➖🌆😌🔥♈♉♊♋♌♍♎♏♐♑♒♓🧭🌈🎨🕊️🐘🪷🛋🛏🏨🧒🖼⭐❤️🦅🏙️🌿🕉️⚪⚫🟡🔵🔴🟢🟤]/g, '') // Strip remaining symbols
+          .replace(/\s{2,}/g, ' ')                        // Collapse whitespace
+          .trim();
+
+        if (!clean || clean.length < 3) return;
+
+        const utterance = new SpeechSynthesisUtterance(clean);
+        utterance.lang = 'en-IN';  // Indian English for natural store context
+        utterance.rate = 1.05;     // Slightly faster for snappy feel
+        utterance.pitch = 1.0;
+        utterance.volume = 0.9;
+
+        // Try to pick a good voice
+        const voices = synth.getVoices();
+        const preferred = voices.find(v => v.lang === 'en-IN' && v.name.includes('Female'))
+                       || voices.find(v => v.lang === 'en-IN')
+                       || voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
+                       || voices.find(v => v.lang.startsWith('en'));
+        if (preferred) utterance.voice = preferred;
+
+        synth.speak(utterance);
+        return utterance;
+      }
+
+      // Voice toggle button
+      const voiceToggleBtn = document.getElementById('art-assistant-voice-toggle');
+      voiceToggleBtn.onclick = () => {
+        voiceEnabled = !voiceEnabled;
+        if (!voiceEnabled) {
+          synth.cancel(); // Stop speaking immediately
+          voiceToggleBtn.textContent = '🔇';
+          voiceToggleBtn.classList.remove('art-voice-on');
+          voiceToggleBtn.classList.add('art-voice-off');
+          voiceToggleBtn.title = 'Voice Off';
+        } else {
+          voiceToggleBtn.textContent = '🔊';
+          voiceToggleBtn.classList.remove('art-voice-off');
+          voiceToggleBtn.classList.add('art-voice-on');
+          voiceToggleBtn.title = 'Voice On';
+        }
+      };
+
+      // Preload voices (needed on some browsers)
+      if (synth && synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = () => synth.getVoices();
+      }
 
       // INIT SPEECH RECOGNITION
       if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -741,6 +822,17 @@
           }
           container.appendChild(div);
           container.scrollTop = container.scrollHeight;
+
+          // Speak bot messages aloud
+          if (sender === 'bot' && !isImg && voiceEnabled) {
+              div.classList.add('speaking');
+              const utt = speakText(content);
+              if (utt) {
+                utt.onend = () => div.classList.remove('speaking');
+              } else {
+                div.classList.remove('speaking');
+              }
+          }
       }
       
       function addActions(items) {
