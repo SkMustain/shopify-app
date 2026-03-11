@@ -372,13 +372,7 @@ async function executeSearch(admin, query, filters) {
     const isTag = query.includes("tag:");
     let textQuery = query.replace("collection:", "").replace("tag:", "").replace(/['"]/g, "").trim();
 
-    // 1. If it's a VASTU tag, fetch from "Vastu Walls" collection then filter by direction tag
-    let vastuDirectionTag = null;
-    if (isTag && textQuery.toLowerCase().includes("vastu")) {
-      console.log("Vastu Tag Detected -> Searching Vastu Walls Collection, then filtering by tag:", textQuery);
-      vastuDirectionTag = textQuery; // e.g. "Vastu-North"
-      textQuery = "Vastu Walls";
-    }
+    // 1. (Removed hardcoded Vastu logic to allow pure tag searching)
 
     // 2. FUZZY COLLECTION MATCHING
     // Always fetch collections and do a forgiving 'includes' match on the first major word
@@ -401,7 +395,7 @@ async function executeSearch(admin, query, filters) {
     }
 
     // 3. FETCH PRODUCTS FROM COLLECTION
-    if (matchedCollection) {
+    if (matchedCollection && isCollection) {
       console.log("FUZZY MATCH SUCCESS! Found Collection ID:", matchedCollection.node.id, "for", textQuery);
       const response = await admin.graphql(
         `#graphql
@@ -422,27 +416,19 @@ async function executeSearch(admin, query, filters) {
       );
       const json = await response.json();
       products = json.data?.collection?.products?.edges.map(e => e.node) || [];
-
-      // If searching by specific Vastu direction, filter by that tag
-      if (vastuDirectionTag && products.length > 0) {
-        const tagLower = vastuDirectionTag.toLowerCase();
-        const filtered = products.filter(p =>
-          p.tags && p.tags.some(t => t.toLowerCase() === tagLower)
-        );
-        // Only apply filter if it returns results; otherwise show all Vastu
-        if (filtered.length > 0) {
-          products = filtered;
-          console.log(`Vastu Direction Filter: ${filtered.length} products matched tag '${vastuDirectionTag}'`);
-        } else {
-          console.log(`Vastu Direction Filter: No products matched tag '${vastuDirectionTag}', showing all Vastu`);
-        }
-      }
     }
 
-    // 4. FALLBACK TO FREEFORM TEXT SEARCH 
-    if (products.length === 0 && !isCollection) {
-      console.log("FALLING BACK TO FREEFORM SEARCH FOR:", textQuery);
-      let finalQuery = textQuery.split(' ').filter(w => w.trim().length > 2).map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+    // 4. FALLBACK TO FREEFORM TEXT SEARCH (or Tag search)
+    if (products.length === 0 && (!isCollection || isTag)) {
+      console.log("FALLING BACK TO STORE SEARCH FOR:", textQuery, isTag ? "(Exact Tag Mode)" : "");
+
+      let finalQuery = "";
+      if (isTag) {
+        finalQuery = `tag:'${textQuery}'`;
+      } else {
+        finalQuery = textQuery.split(' ').filter(w => w.trim().length > 2).map(w => `(title:${w}* OR tag:${w}*)`).join(' AND ');
+      }
+
       if (!finalQuery) finalQuery = "title:''";
 
       const response = await admin.graphql(

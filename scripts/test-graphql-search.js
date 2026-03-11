@@ -1,51 +1,42 @@
-import '@shopify/shopify-api/adapters/node';
-import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
-import Prisma from '@prisma/client';
-const { PrismaClient } = Prisma;
+import "dotenv/config";
 
-const shopify = shopifyApi({
-  apiSecretKey: 'test',
-  apiKey: 'test',
-  isEmbeddedApp: false,
-  hostName: 'localhost',
-  apiVersion: ApiVersion.October23
-});
+const SHOP = process.env.SHOPIFY_STORE_URL || "suraj-test-v2.myshopify.com";
+const TOKEN = process.env.SHOPIFY_API_KEY;
+
+async function graphql(query, variables = {}) {
+  const res = await fetch(`https://${SHOP}/admin/api/2023-10/graphql.json`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Shopify-Access-Token": TOKEN
+    },
+    body: JSON.stringify({ query, variables })
+  });
+  return res.json();
+}
 
 async function runTest() {
-  const prisma = new PrismaClient();
-  const session = await prisma.session.findFirst({
-    where: { isActive: true },
-    orderBy: { shop: 'desc' }
-  });
-
-  if (!session) {
-    console.log("No active session found.");
-    return;
-  }
-
-  console.log("Using store session:", session.shop);
-  const client = new shopify.clients.Graphql({ session });
-
   try {
-    const q1 = await client.request(`
+    const textQuery = 'tag:Vastu-East';
+    console.log(`Searching for products with query: "${textQuery}"`);
+
+    const r1 = await graphql(`
       query {
-        products(first: 1) {
-          edges {
-            node {
-              id title handle description(truncateAt: 100) productType vendor tags
-              variants(first: 1) { edges { node { id, price } } }
-              featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
-            }
-          }
+        products(first: 5, query: "tag:Vastu-East") {
+          edges { node { id, title, tags } }
         }
       }
     `);
-    console.log("SUCCESS");
-  } catch (e) {
-    console.error("GRAPHQL ERROR:", e.message || e);
-    if (e.response && e.response.errors) {
-      console.error(JSON.stringify(e.response.errors, null, 2));
+
+    if (r1.errors) {
+      console.error("Product fetch errors:", r1.errors);
+      return;
     }
+    const prods = r1.data?.products?.edges || [];
+    console.log("Products found:", prods.length);
+    console.log(JSON.stringify(prods, null, 2));
+  } catch (e) {
+    console.error("Error:", e.message || e);
   }
 }
 
