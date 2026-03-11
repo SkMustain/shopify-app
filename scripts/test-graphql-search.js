@@ -1,12 +1,11 @@
 import '@shopify/shopify-api/adapters/node';
 import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
-import { PrismaClient } from '@prisma/client';
-import "dotenv/config";
+import Prisma from '@prisma/client';
+const { PrismaClient } = Prisma;
 
 const shopify = shopifyApi({
   apiSecretKey: 'test',
   apiKey: 'test',
-  adminApiAccessToken: process.env.SHOPIFY_API_KEY,
   isEmbeddedApp: false,
   hostName: 'localhost',
   apiVersion: ApiVersion.October23
@@ -15,11 +14,12 @@ const shopify = shopifyApi({
 async function runTest() {
   const prisma = new PrismaClient();
   const session = await prisma.session.findFirst({
+    where: { isActive: true },
     orderBy: { shop: 'desc' }
   });
 
   if (!session) {
-    console.log("No store session found in DB.");
+    console.log("No active session found.");
     return;
   }
 
@@ -27,24 +27,25 @@ async function runTest() {
   const client = new shopify.clients.Graphql({ session });
 
   try {
-    const q = 'tag:Vastu-North';
-    console.log(`Searching for: products(query: "${q}")`);
-
-    const r1 = await client.request(`
+    const q1 = await client.request(`
       query {
-        products(first: 20, query: "${q}") {
-          edges { node { id, title, tags } }
+        products(first: 1) {
+          edges {
+            node {
+              id title handle description(truncateAt: 100) productType vendor tags
+              variants(first: 1) { edges { node { id, price } } }
+              featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+            }
+          }
         }
       }
     `);
-
-    const prods = r1.data.products.edges;
-    console.log("Products found:", prods.length);
-    if (prods.length > 0) {
-      console.log(JSON.stringify(prods, null, 2));
-    }
+    console.log("SUCCESS");
   } catch (e) {
-    console.error("Error fetching products:", e.message);
+    console.error("GRAPHQL ERROR:", e.message || e);
+    if (e.response && e.response.errors) {
+      console.error(JSON.stringify(e.response.errors, null, 2));
+    }
   }
 }
 

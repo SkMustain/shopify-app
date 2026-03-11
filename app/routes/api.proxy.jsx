@@ -411,8 +411,8 @@ async function executeSearch(admin, query, filters) {
                 edges {
                   node {
                     id title handle description(truncateAt: 100) productType vendor tags
-                    variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                    featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                    variants(first: 1) { edges { node { id, price } } }
+                    featuredImage { url }
                   }
                 }
               }
@@ -452,8 +452,8 @@ async function executeSearch(admin, query, filters) {
               edges {
                 node {
                   id title handle description(truncateAt: 100) productType vendor tags
-                  variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                  featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                  variants(first: 1) { edges { node { id, price } } }
+                  featuredImage { url }
                 }
               }
             }
@@ -474,8 +474,8 @@ async function executeSearch(admin, query, filters) {
               edges {
                 node {
                   id title handle description(truncateAt: 100) productType vendor tags
-                  variants(first: 1) { edges { node { id, price { amount currencyCode } } } }
-                  featuredImage { url } priceRangeV2 { minVariantPrice { amount currencyCode } }
+                  variants(first: 1) { edges { node { id, price } } }
+                  featuredImage { url }
                 }
               }
             }
@@ -488,7 +488,8 @@ async function executeSearch(admin, query, filters) {
     // Apply Budget Filter
     if (budget) {
       products = products.filter(p => {
-        const price = parseFloat(p.priceRangeV2?.minVariantPrice?.amount || "0");
+        const priceStr = p.variants?.edges?.[0]?.node?.price || "0";
+        const price = parseFloat(priceStr);
         if (budget === "Low") return price >= 999 && price <= 1999;
         if (budget === "Mid") return price >= 2000 && price <= 5000;
         if (budget === "High") return price > 5000;
@@ -500,7 +501,7 @@ async function executeSearch(admin, query, filters) {
 
     const carouselData = products.map(node => ({
       title: node.title,
-      price: node.priceRangeV2?.minVariantPrice ? `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}` : "Price N/A",
+      price: node.variants?.edges?.[0]?.node?.price ? `₹${node.variants.edges[0].node.price}` : "Price N/A",
       image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
       url: `/products/${node.handle}`,
       variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "",
