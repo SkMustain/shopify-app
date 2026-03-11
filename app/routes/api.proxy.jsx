@@ -245,15 +245,16 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 
       if (step === "START") {
         responseData = {
-          reply: "I’ll help you choose something stunning ✨\nWhat kind of paintings are you looking for?",
+          reply: "I'll help you choose something stunning \u2728\nWhat kind of paintings are you looking for?",
+          voiceText: "I'll help you choose something stunning! We have 6 exciting categories for you. Vastu Friendly paintings for positive energy, Zodiac Sign paintings matched to your star sign, Color based search to match your room, different artistic Styles and Vibes, Subjects like Buddha, Nature, or Ganesha, and you can also Shop by Room type. Which one interests you?",
           type: "actions",
           data: [
-            { label: "🧭 Vastu Friendly", payload: "FLOW_GUIDE:VASTU" },
-            { label: "✨ Zodiac Signs", payload: "FLOW_GUIDE:ZODIAC" },
-            { label: "🌈 Pick by Color", payload: "FLOW_GUIDE:COLORS" },
-            { label: "🎨 Styles & Vibes", payload: "FLOW_GUIDE:STYLES" },
-            { label: "🕊️ Subjects & Themes", payload: "FLOW_GUIDE:SUBJECTS" },
-            { label: "🏠 Shop by Room", payload: "FLOW_GUIDE:ROOMS" }
+            { label: "\ud83e\udded Vastu Friendly", payload: "FLOW_GUIDE:VASTU" },
+            { label: "\u2728 Zodiac Signs", payload: "FLOW_GUIDE:ZODIAC" },
+            { label: "\ud83c\udf08 Pick by Color", payload: "FLOW_GUIDE:COLORS" },
+            { label: "\ud83c\udfa8 Styles & Vibes", payload: "FLOW_GUIDE:STYLES" },
+            { label: "\ud83d\udd4a\ufe0f Subjects & Themes", payload: "FLOW_GUIDE:SUBJECTS" },
+            { label: "\ud83c\udfe0 Shop by Room", payload: "FLOW_GUIDE:ROOMS" }
           ]
         };
       }
@@ -261,6 +262,7 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       else if (step === "VASTU") {
         responseData = {
           reply: "Great! Which direction does your wall face?",
+          voiceText: "Great choice! I'll show you Vastu friendly paintings. We have 4 types of Vastu wall art based on directions. North wall paintings bring Wealth and Water energy. South wall paintings attract Fame and Fire energy. East wall paintings boost Health and Air energy. And West wall paintings enhance Gains and Space energy. You can also see all our Vastu paintings together. Which direction does your wall face?",
           type: "actions",
           data: [
             { label: "North (Wealth/Water)", payload: "FLOW_GUIDE:SEARCH:tag:Vastu-North" },
@@ -274,38 +276,40 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
 
       else if (step === "ZODIAC") {
         responseData = {
-          reply: "Select your Zodiac sign to find art that resonates with your energy 🌟",
+          reply: "Select your Zodiac sign to find art that resonates with your energy \ud83c\udf1f",
+          voiceText: "Let's find art that matches your zodiac energy! I have paintings for all 12 zodiac signs. Aries, Taurus, Gemini, Cancer, Leo, Virgo, Libra, Scorpio, Sagittarius, Capricorn, Aquarius, and Pisces. Each sign has specially curated artwork. Just select your sign!",
           type: "actions",
           data: [
-            { label: "♈ Aries", payload: "FLOW_GUIDE:SEARCH:tag:ARIES" },
-            { label: "♉ Taurus", payload: "FLOW_GUIDE:SEARCH:tag:TAURUS" },
-            { label: "♊ Gemini", payload: "FLOW_GUIDE:SEARCH:tag:GEMINI" },
-            { label: "♋ Cancer", payload: "FLOW_GUIDE:SEARCH:tag:CANCER" },
-            { label: "♌ Leo", payload: "FLOW_GUIDE:SEARCH:tag:LEO" },
-            { label: "♍ Virgo", payload: "FLOW_GUIDE:SEARCH:tag:VIRGO" },
-            { label: "♎ Libra", payload: "FLOW_GUIDE:SEARCH:tag:LIBRA" },
-            { label: "♏ Scorpio", payload: "FLOW_GUIDE:SEARCH:tag:SCORPIO" },
-            { label: "♐ Sagittarius", payload: "FLOW_GUIDE:SEARCH:tag:SAGITTARIUS" },
-            { label: "♑ Capricorn", payload: "FLOW_GUIDE:SEARCH:tag:CAPRICORN" },
-            { label: "♒ Aquarius", payload: "FLOW_GUIDE:SEARCH:tag:AQUARIUS" },
-            { label: "♓ Pisces", payload: "FLOW_GUIDE:SEARCH:tag:PISCES" }
+            { label: "\u2648 Aries", payload: "FLOW_GUIDE:SEARCH:tag:ARIES" },
+            { label: "\u2649 Taurus", payload: "FLOW_GUIDE:SEARCH:tag:TAURUS" },
+            { label: "\u264a Gemini", payload: "FLOW_GUIDE:SEARCH:tag:GEMINI" },
+            { label: "\u264b Cancer", payload: "FLOW_GUIDE:SEARCH:tag:CANCER" },
+            { label: "\u264c Leo", payload: "FLOW_GUIDE:SEARCH:tag:LEO" },
+            { label: "\u264d Virgo", payload: "FLOW_GUIDE:SEARCH:tag:VIRGO" },
+            { label: "\u264e Libra", payload: "FLOW_GUIDE:SEARCH:tag:LIBRA" },
+            { label: "\u264f Scorpio", payload: "FLOW_GUIDE:SEARCH:tag:SCORPIO" },
+            { label: "\u2650 Sagittarius", payload: "FLOW_GUIDE:SEARCH:tag:SAGITTARIUS" },
+            { label: "\u2651 Capricorn", payload: "FLOW_GUIDE:SEARCH:tag:CAPRICORN" },
+            { label: "\u2652 Aquarius", payload: "FLOW_GUIDE:SEARCH:tag:AQUARIUS" },
+            { label: "\u2653 Pisces", payload: "FLOW_GUIDE:SEARCH:tag:PISCES" }
           ]
         };
       }
 
       else if (step === "COLORS") {
         responseData = {
-          reply: "What color palette fits your space? 🎨",
+          reply: "What color palette fits your space? \ud83c\udfa8",
+          voiceText: "Let's find paintings by color! We have beautiful options in Gold and Yellow tones, Blue and Navy shades, Red and Pink hues, fresh Greens, earthy Browns, elegant White and Silver, bold Black, and vibrant Colorful splash art. Pick a color that matches your room!",
           type: "actions",
           data: [
-            { label: "🟡 Gold/Yellow", payload: "FLOW_GUIDE:SEARCH:tag:Gold OR tag:Yellow" },
-            { label: "🔵 Blue/Navy", payload: "FLOW_GUIDE:SEARCH:tag:Blue OR tag:Navy" },
-            { label: "🔴 Red/Pink", payload: "FLOW_GUIDE:SEARCH:tag:Red OR tag:Pink" },
-            { label: "🟢 Green", payload: "FLOW_GUIDE:SEARCH:tag:Green" },
-            { label: "🟤 Brown/Wood", payload: "FLOW_GUIDE:SEARCH:tag:Brown" },
-            { label: "⚪ White/Silver", payload: "FLOW_GUIDE:SEARCH:tag:White OR tag:Silver" },
-            { label: "⚫ Black", payload: "FLOW_GUIDE:SEARCH:tag:Black" },
-            { label: "🌈 Colorful/Splash", payload: "FLOW_GUIDE:SEARCH:tag:Colorful OR tag:color splash" }
+            { label: "\ud83d\udfe1 Gold/Yellow", payload: "FLOW_GUIDE:SEARCH:tag:Gold OR tag:Yellow" },
+            { label: "\ud83d\udd35 Blue/Navy", payload: "FLOW_GUIDE:SEARCH:tag:Blue OR tag:Navy" },
+            { label: "\ud83d\udd34 Red/Pink", payload: "FLOW_GUIDE:SEARCH:tag:Red OR tag:Pink" },
+            { label: "\ud83d\udfe2 Green", payload: "FLOW_GUIDE:SEARCH:tag:Green" },
+            { label: "\ud83d\udfe4 Brown/Wood", payload: "FLOW_GUIDE:SEARCH:tag:Brown" },
+            { label: "\u26aa White/Silver", payload: "FLOW_GUIDE:SEARCH:tag:White OR tag:Silver" },
+            { label: "\u26ab Black", payload: "FLOW_GUIDE:SEARCH:tag:Black" },
+            { label: "\ud83c\udf08 Colorful/Splash", payload: "FLOW_GUIDE:SEARCH:tag:Colorful OR tag:color splash" }
           ]
         };
       }
@@ -313,15 +317,16 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       else if (step === "STYLES") {
         responseData = {
           reply: "Choose an artistic style or vibe:",
+          voiceText: "Now let's pick an artistic style! You can choose from Abstract and Modern art, Vintage and Classic pieces, beautiful Watercolor paintings, clean Minimalism, futuristic Cyberpunk art, Calm and Serene paintings for peaceful vibes, or Energetic and Dynamic art for bold statements. What style speaks to you?",
           type: "actions",
           data: [
-            { label: "❇️ Abstract & Modern", payload: "FLOW_GUIDE:SEARCH:tag:Abstract OR tag:Modern" },
-            { label: "🕰️ Vintage & Classic", payload: "FLOW_GUIDE:SEARCH:tag:Vintage OR tag:traditional painting" },
-            { label: "🖌️ Watercolor & Painterly", payload: "FLOW_GUIDE:SEARCH:tag:Watercolor" },
-            { label: "➖ Minimalism", payload: "FLOW_GUIDE:SEARCH:tag:Minimalism" },
-            { label: "🌆 Cyberpunk/Futuristic", payload: "FLOW_GUIDE:SEARCH:tag:Cyberpunk OR tag:Futuristic" },
-            { label: "😌 Calm & Serene", payload: "FLOW_GUIDE:SEARCH:tag:Serenity OR tag:Tranquility" },
-            { label: "🔥 Energetic & Dynamic", payload: "FLOW_GUIDE:SEARCH:tag:Energetic OR tag:Positive Energy" }
+            { label: "\u2747\ufe0f Abstract & Modern", payload: "FLOW_GUIDE:SEARCH:tag:Abstract OR tag:Modern" },
+            { label: "\ud83d\udd70\ufe0f Vintage & Classic", payload: "FLOW_GUIDE:SEARCH:tag:Vintage OR tag:traditional painting" },
+            { label: "\ud83d\udd8c\ufe0f Watercolor & Painterly", payload: "FLOW_GUIDE:SEARCH:tag:Watercolor" },
+            { label: "\u2796 Minimalism", payload: "FLOW_GUIDE:SEARCH:tag:Minimalism" },
+            { label: "\ud83c\udf06 Cyberpunk/Futuristic", payload: "FLOW_GUIDE:SEARCH:tag:Cyberpunk OR tag:Futuristic" },
+            { label: "\ud83d\ude0c Calm & Serene", payload: "FLOW_GUIDE:SEARCH:tag:Serenity OR tag:Tranquility" },
+            { label: "\ud83d\udd25 Energetic & Dynamic", payload: "FLOW_GUIDE:SEARCH:tag:Energetic OR tag:Positive Energy" }
           ]
         };
       }
@@ -329,15 +334,16 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       else if (step === "SUBJECTS") {
         responseData = {
           reply: "What subject are you most interested in?",
+          voiceText: "Let me show you paintings by subject! We have peaceful Buddha paintings, divine Lord Ganesha art, spiritual Shiva and Krishna paintings, beautiful Nature and Landscape sceneries, stunning Cityscapes and Travel art, lovely Birds and Animal paintings, and romantic Love themed artwork. What catches your eye?",
           type: "actions",
           data: [
-            { label: "🪷 Buddha", payload: "FLOW_GUIDE:SEARCH:tag:Buddha" },
-            { label: "🐘 Lord Ganesha", payload: "FLOW_GUIDE:SEARCH:tag:Ganesha" },
-            { label: "🕉️ Shiva & Krishna", payload: "FLOW_GUIDE:SEARCH:tag:Shiva OR tag:Krishna" },
-            { label: "🌿 Nature & Landscapes", payload: "FLOW_GUIDE:SEARCH:tag:Landscape OR tag:Nature" },
-            { label: "🏙️ Cityscapes & Travel", payload: "FLOW_GUIDE:SEARCH:tag:Cityscape OR tag:travel art" },
-            { label: "🦅 Birds & Animals", payload: "FLOW_GUIDE:SEARCH:tag:Bird OR tag:Animal" },
-            { label: "❤️ Love & Romance", payload: "FLOW_GUIDE:SEARCH:tag:romantic" }
+            { label: "\ud83e\udeb7 Buddha", payload: "FLOW_GUIDE:SEARCH:tag:Buddha" },
+            { label: "\ud83d\udc18 Lord Ganesha", payload: "FLOW_GUIDE:SEARCH:tag:Ganesha" },
+            { label: "\ud83d\udd49\ufe0f Shiva & Krishna", payload: "FLOW_GUIDE:SEARCH:tag:Shiva OR tag:Krishna" },
+            { label: "\ud83c\udf3f Nature & Landscapes", payload: "FLOW_GUIDE:SEARCH:tag:Landscape OR tag:Nature" },
+            { label: "\ud83c\udfd9\ufe0f Cityscapes & Travel", payload: "FLOW_GUIDE:SEARCH:tag:Cityscape OR tag:travel art" },
+            { label: "\ud83e\udd85 Birds & Animals", payload: "FLOW_GUIDE:SEARCH:tag:Bird OR tag:Animal" },
+            { label: "\u2764\ufe0f Love & Romance", payload: "FLOW_GUIDE:SEARCH:tag:romantic" }
           ]
         };
       }
@@ -345,15 +351,16 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
       else if (step === "ROOMS") {
         responseData = {
           reply: "Which room are you decorating?",
+          voiceText: "Let's find the perfect painting for your room! You can browse our curated collections for the Living Room, Bedroom, Hotel spaces, Kids Room with fun designs, Multiple Frame sets, our Best Sellers, and trendy Gen Z Art. Which room are you looking to decorate?",
           type: "actions",
           data: [
-            { label: "🛋 Living Room", payload: "FLOW_GUIDE:SEARCH:collection:'Living Room'" },
-            { label: "🛏 Bedroom", payload: "FLOW_GUIDE:SEARCH:collection:'Bedroom'" },
-            { label: "🏨 Hotel", payload: "FLOW_GUIDE:SEARCH:collection:'Hotel'" },
-            { label: "🧒 Kids Room", payload: "FLOW_GUIDE:SEARCH:collection:'Kids Room'" },
-            { label: "🖼 Multiple Frames", payload: "FLOW_GUIDE:SEARCH:collection:'Multiple Frames'" },
-            { label: "⭐ Best Sellers", payload: "FLOW_GUIDE:SEARCH:collection:'Best Sellers'" },
-            { label: "🎨 Gen Z Art", payload: "FLOW_GUIDE:SEARCH:collection:'Gen Z Art'" }
+            { label: "\ud83d\udecb Living Room", payload: "FLOW_GUIDE:SEARCH:collection:'Living Room'" },
+            { label: "\ud83d\udecf Bedroom", payload: "FLOW_GUIDE:SEARCH:collection:'Bedroom'" },
+            { label: "\ud83c\udfe8 Hotel", payload: "FLOW_GUIDE:SEARCH:collection:'Hotel'" },
+            { label: "\ud83e\uddd2 Kids Room", payload: "FLOW_GUIDE:SEARCH:collection:'Kids Room'" },
+            { label: "\ud83d\uddbc Multiple Frames", payload: "FLOW_GUIDE:SEARCH:collection:'Multiple Frames'" },
+            { label: "\u2b50 Best Sellers", payload: "FLOW_GUIDE:SEARCH:collection:'Best Sellers'" },
+            { label: "\ud83c\udfa8 Gen Z Art", payload: "FLOW_GUIDE:SEARCH:collection:'Gen Z Art'" }
           ]
         };
       }
@@ -382,7 +389,8 @@ Do not include markdown blocks or any other text. Just the raw JSON.`;
         }
 
         responseData = {
-          reply: `Here are our best matching picks for you! ✨\n\nTo explore further, what would you like to do?`,
+          reply: `Here are our best matching picks for you! \u2728\n\nTo explore further, what would you like to do?`,
+          voiceText: `Here are our best matching picks for you! I've highlighted the top result in the chat, and added more options to the sidebar. You can refine by budget, or try a completely different category.`,
           type: "carousel",
           carousel: searchResult.data || [],
           actions: followUpActions

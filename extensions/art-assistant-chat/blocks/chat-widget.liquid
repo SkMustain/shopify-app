@@ -770,7 +770,7 @@
               const data = await res.json();
               loader.remove();
               
-              if(data.reply) addMsg(data.reply, 'bot');
+              if(data.reply) addMsg(data.reply, 'bot', false, data.voiceText);
               
               if(data.type === 'carousel' || data.carousel) {
                   const carouselData = data.carousel || (data.type === 'carousel' ? data.data : []);
@@ -812,7 +812,7 @@
       input.onkeypress = (e) => { if(e.key==='Enter') send(); };
 
       // Helpers
-      function addMsg(content, sender, isImg=false) {
+      function addMsg(content, sender, isImg=false, voiceOverride=null) {
           const div = document.createElement('div');
           div.className = `art-message ${sender}`;
           if(isImg) {
@@ -823,10 +823,11 @@
           container.appendChild(div);
           container.scrollTop = container.scrollHeight;
 
-          // Speak bot messages aloud
+          // Speak bot messages aloud — use voiceOverride (rich narration) if provided
           if (sender === 'bot' && !isImg && voiceEnabled) {
+              const textToSpeak = voiceOverride || content;
               div.classList.add('speaking');
-              const utt = speakText(content);
+              const utt = speakText(textToSpeak);
               if (utt) {
                 utt.onend = () => div.classList.remove('speaking');
               } else {
