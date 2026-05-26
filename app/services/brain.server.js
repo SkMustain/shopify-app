@@ -135,6 +135,12 @@ TONE: Elegant, direct, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). 
                 }
             }
 
+            // CRITICAL: Gemini SDK requires the last message in history to be from 'model' (role: 'model')
+            // so that the next message sent via sendMessage() (which is 'user') alternates correctly!
+            while (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role !== 'model') {
+                cleanHistory.pop();
+            }
+
             const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
             let lastError = null;
 
@@ -591,7 +597,16 @@ Do not return any markdown blocks or outer strings. Just raw JSON.`;
                     intent: "chat"
                 };
             }
-            const keywords = text.toLowerCase().split(" ").filter(w => w.length > 3).join(" ");
+            // Filter out common conversational stop words for high-accuracy keyword search
+            const stopWords = new Set(["hay", "hey", "hi", "hello", "want", "show", "please", "give", "find", "search", "painting", "paintings", "canvas", "art", "wall", "room", "decor", "for", "my", "our", "the", "and", "with", "type", "orient", "oriented", "some", "something", "i", "a", "an", "am"]);
+            
+            const keywords = text.toLowerCase()
+                .replace(/[^\w\s]/g, "")
+                .split(/\s+/)
+                .filter(w => w.length > 2 && !stopWords.has(w))
+                .join(" ");
+
+            console.log(`🤖 Resilient Safe Mode query formulation: "${keywords}"`);
             const products = await this.executeShopifyGraphQLSearch(admin, keywords);
             return {
                 reply: `I searched our catalog for "${keywords || 'artworks'}"! Here are some beautiful suggestions: 👇`,
