@@ -110,13 +110,10 @@ Once you have collected 3 or more preferences, call 'search_vector_database' wit
 
 TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do not output markdown blocks for your tool calls.`;
 
-        // Attempt Gemini 2.0 Flash Reasoning Loop
+        // Attempt Gemini 2.5/2.0/1.5 Flash Reasoning Loop
         try {
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash", 
-                tools, 
-                systemInstruction: systemPrompt 
-            });
+            let response;
+            let chat;
 
             // Filter and ensure history alternates strictly between 'user' and 'model'
             const cleanHistory = [];
@@ -132,12 +129,35 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
                 }
             }
 
-            const chat = model.startChat({
-                history: cleanHistory
-            });
+            const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+            let lastError = null;
 
-            const result = await chat.sendMessage(text);
-            const response = result.response;
+            for (const modelName of modelsToTry) {
+                try {
+                    console.log(`🤖 Attempting ReAct Agent chat with model: ${modelName}`);
+                    const model = genAI.getGenerativeModel({ 
+                        model: modelName, 
+                        tools, 
+                        systemInstruction: systemPrompt 
+                    });
+                    
+                    chat = model.startChat({
+                        history: cleanHistory
+                    });
+
+                    const result = await chat.sendMessage(text);
+                    response = result.response;
+                    break; // Break loop on success
+                } catch (err) {
+                    console.warn(`⚠️ Model ${modelName} failed during ReAct Agent chat:`, err.message);
+                    lastError = err;
+                }
+            }
+
+            if (!response) {
+                throw new Error(`All generative models failed. Last error: ${lastError?.message}`);
+            }
+
             const functionCall = response.functionCalls()?.[0];
 
             // --- 4. REACT AGENT FUNCTION CALL HANDLING ---
@@ -284,12 +304,7 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
             }
 
             // 4. THE CRITIC/THINKING CAP PHASE
-            // Instruct Gemini 2.0 Flash to act as an elite curator, evaluate candidates, filter out 15, and pitches top 5.
-            const curatorModel = genAI.getGenerativeModel({ 
-                model: "gemini-2.0-flash",
-                generationConfig: { responseMimeType: "application/json" }
-            });
-
+            // Instruct Gemini 2.5 Flash to act as an elite curator, evaluate candidates, filter out 15, and pitches top 5.
             const curatorPrompt = `You are an elite interior design art curator.
 The client wants a painting matching this intent profile:
 - Room: ${session.roomType || "Any"}
@@ -325,7 +340,29 @@ Return STRICTLY a JSON object with this exact shape:
 Do not return any markdown blocks or outer strings. Just raw JSON.`;
 
             console.log("🧐 Triggering Critic/Curator Analysis on 20 candidates...");
-            const curationResult = await curatorModel.generateContent(curatorPrompt);
+            let curationResult;
+            const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+            let curatorError = null;
+
+            for (const modelName of modelsToTry) {
+                try {
+                    console.log(`🧐 Attempting curator curation with model: ${modelName}`);
+                    const curatorModel = genAI.getGenerativeModel({ 
+                        model: modelName,
+                        generationConfig: { responseMimeType: "application/json" }
+                    });
+                    curationResult = await curatorModel.generateContent(curatorPrompt);
+                    break; // Success!
+                } catch (err) {
+                    console.warn(`⚠️ Curator model ${modelName} failed:`, err.message);
+                    curatorError = err;
+                }
+            }
+
+            if (!curationResult) {
+                throw new Error(`All curator models failed. Last error: ${curatorError?.message}`);
+            }
+
             let rawCurationJson = curationResult.response.text().trim();
             if (rawCurationJson.startsWith("```json")) {
                 rawCurationJson = rawCurationJson.replace(/```json/g, "").replace(/```/g, "").trim();

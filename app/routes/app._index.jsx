@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useLoaderData, useFetcher } from "react-router";
-import { useAppBridge } from "@shopify/app-bridge-react";
-import { Page, Layout, Card, BlockStack, Text, Grid, DataMap, Button, TextField, InlineGrid, Box, Banner } from "@shopify/polaris";
+import { Page, Layout, Card, BlockStack, Text, Button, TextField, InlineGrid, Box, Banner } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -44,27 +43,36 @@ export const action = async ({ request }) => {
         return { status: "error", message: "❌ No API Key provided to test. Please paste a valid key!" };
       }
 
-      console.log("Testing Gemini 2.0 Flash...");
+      console.log("Testing Gemini 2.5 Flash...");
       const genAI = new GoogleGenerativeAI(apiKey);
       
       try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         const result = await model.generateContent("Hello? Act as a friendly Art Assistant. Say hello!");
         const text = result.response.text();
-        return { status: "success", message: `✅ Success! Gemini 2.0 Flash is working. Response: "${text.trim().slice(0, 60)}..."` };
+        return { status: "success", message: `✅ Success! Gemini 2.5 Flash is working. Response: "${text.trim().slice(0, 60)}..."` };
       } catch (e1) {
-        console.warn("Primary model gemini-2.0-flash failed, trying gemini-2.0-flash-lite...", e1.message);
+        console.warn("Primary model gemini-2.5-flash failed, trying gemini-2.0-flash...", e1.message);
         
         try {
-          const modelLite = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-          const resultLite = await modelLite.generateContent("Hello? Say hello!");
-          const textLite = resultLite.response.text();
-          return { status: "success", message: `⚠️ Backup Model (Gemini 2.0 Flash Lite) is working! Response: "${textLite.trim().slice(0, 60)}..."` };
+          const model2 = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const result2 = await model2.generateContent("Hello? Say hello!");
+          const text2 = result2.response.text();
+          return { status: "success", message: `⚠️ Backup Model (Gemini 2.0 Flash) is working! Response: "${text2.trim().slice(0, 60)}..."` };
         } catch (e2) {
-          return { 
-            status: "error", 
-            message: `❌ API Connection Failed! Please verify your key. [Primary error: ${e1.message}] [Backup error: ${e2.message}]` 
-          };
+          console.warn("Backup model gemini-2.0-flash failed, trying gemini-1.5-flash...", e2.message);
+          
+          try {
+            const model3 = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+            const result3 = await model3.generateContent("Hello? Say hello!");
+            const text3 = result3.response.text();
+            return { status: "success", message: `⚠️ Backup Model (Gemini 1.5 Flash) is working! Response: "${text3.trim().slice(0, 60)}..."` };
+          } catch (e3) {
+            return { 
+              status: "error", 
+              message: `❌ API Connection Failed! Please verify your key. [Gemini 2.5 Flash error: ${e1.message}] [Gemini 2.0 Flash error: ${e2.message}] [Gemini 1.5 Flash error: ${e3.message}]` 
+            };
+          }
         }
       }
     } catch (globalErr) {

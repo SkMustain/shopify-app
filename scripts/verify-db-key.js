@@ -1,40 +1,34 @@
-
-import { PrismaClient } from "@prisma/client";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import dotenv from "dotenv";
-
-dotenv.config();
+import pkg from "@prisma/client";
+const { PrismaClient } = pkg;
 
 const prisma = new PrismaClient();
 
-async function verify() {
-    console.log("🔍 Reading API Key from Database...");
-    const setting = await prisma.appSetting.findUnique({
-        where: { key: "GEMINI_API_KEY" }
-    });
-
-    if (!setting || !setting.value) {
-        console.error("❌ No API Key found in DB!");
-        return;
-    }
-
-    const apiKey = setting.value;
-    console.log(`✅ Found Key: ${apiKey.slice(0, 5)}...${apiKey.slice(-5)}`);
-
-    console.log("🤖 Testing Gemini 2.0 Flash...");
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+async function verifyDBKey() {
+    console.log("--- Diagnosing Saved Gemini API Key ---");
 
     try {
-        const result = await model.generateContent("Hello, are you working?");
-        console.log("✅ Gemini 2.0 Response:", result.response.text());
+        const settings = await prisma.appSetting.findMany();
+        console.log("Total settings in database:", settings.length);
+        settings.forEach(s => {
+            console.log(`- Key: "${s.key}" | Value Length: ${s.value ? s.value.length : 0} | Masked Value: ${s.value ? s.value.slice(0, 5) + "..." + s.value.slice(-5) : "N/A"}`);
+        });
+
+        const apiKeyObj = await prisma.appSetting.findUnique({
+            where: { key: "GEMINI_API_KEY" }
+        });
+
+        if (apiKeyObj && apiKeyObj.value) {
+            console.log("✅ SUCCESS! GEMINI_API_KEY is found in the database.");
+        } else {
+            console.error("❌ ERROR: GEMINI_API_KEY is NOT found in the database settings table!");
+            console.log("This is why the agent is running in Resilient Safe Fallback Mode!");
+        }
+
     } catch (e) {
-        console.error("❌ Gemini 2.0 Failed:", e.message);
+        console.error("❌ ERROR reading database settings:", e.message);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-verify()
-    .catch(e => console.error(e))
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+verifyDBKey();

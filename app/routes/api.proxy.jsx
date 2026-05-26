@@ -216,7 +216,6 @@ export const action = async ({ request }) => {
       try {
         const { GoogleGenerativeAI } = await import("@google/generative-ai");
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const mimeTypeMatch = userImage.match(/[^:]\w+\/[\w-+\d.]+(?=;|,)/);
         const mimeType = mimeTypeMatch ? mimeTypeMatch[0] : "image/jpeg";
@@ -232,7 +231,25 @@ export const action = async ({ request }) => {
 3. "inferred_colors": The dominant color tones in the room (e.g. "Neutrals", "Blues", "Warm Golds").
 Return ONLY the raw JSON. No markdown formatting.`;
 
-        const result = await model.generateContent([prompt, imagePart]);
+        let result;
+        const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+        let visionError = null;
+
+        for (const modelName of modelsToTry) {
+          try {
+            console.log(`📸 Attempting Vision analysis with model: ${modelName}`);
+            const model = genAI.getGenerativeModel({ model: modelName });
+            result = await model.generateContent([prompt, imagePart]);
+            break; // Success!
+          } catch (err) {
+            console.warn(`⚠️ Vision model ${modelName} failed:`, err.message);
+            visionError = err;
+          }
+        }
+
+        if (!result) {
+          throw new Error(`All vision models failed. Last error: ${visionError?.message}`);
+        }
         let responseText = result.response.text().trim();
         if (responseText.startsWith("```json")) {
           responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
