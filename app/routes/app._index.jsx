@@ -38,27 +38,37 @@ export const action = async ({ request }) => {
 
   // Handle API Key Test
   if (intent === "test_key") {
-    const apiKey = formData.get("apiKey");
-    if (!apiKey) return { status: "error", message: "No API Key provided to test." };
-
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      console.log("Testing Gemini 2.0 Flash...");
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent("Hello?");
-      await result.response;
-      return { status: "success", message: "✅ Success! Gemini 2.0 Flash is working." };
-    } catch (e1) {
-      console.warn("Primary model failed, trying lite...", e1.message);
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const modelLite = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite-preview-02-05" });
-        const resultLite = await modelLite.generateContent("Hello?");
-        await resultLite.response;
-        return { status: "success", message: "⚠️ Primary Quota Exceeded, but Backup (Flash Lite) is working!" };
-      } catch (e2) {
-        return { status: "error", message: `❌ All Models Failed. Primary: ${e1.message}. Backup: ${e2.message}` };
+      const apiKey = String(formData.get("apiKey") || "").trim();
+      if (!apiKey) {
+        return { status: "error", message: "❌ No API Key provided to test. Please paste a valid key!" };
       }
+
+      console.log("Testing Gemini 2.0 Flash...");
+      const genAI = new GoogleGenerativeAI(apiKey);
+      
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const result = await model.generateContent("Hello? Act as a friendly Art Assistant. Say hello!");
+        const text = result.response.text();
+        return { status: "success", message: `✅ Success! Gemini 2.0 Flash is working. Response: "${text.trim().slice(0, 60)}..."` };
+      } catch (e1) {
+        console.warn("Primary model gemini-2.0-flash failed, trying gemini-2.0-flash-lite...", e1.message);
+        
+        try {
+          const modelLite = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+          const resultLite = await modelLite.generateContent("Hello? Say hello!");
+          const textLite = resultLite.response.text();
+          return { status: "success", message: `⚠️ Backup Model (Gemini 2.0 Flash Lite) is working! Response: "${textLite.trim().slice(0, 60)}..."` };
+        } catch (e2) {
+          return { 
+            status: "error", 
+            message: `❌ API Connection Failed! Please verify your key. [Primary error: ${e1.message}] [Backup error: ${e2.message}]` 
+          };
+        }
+      }
+    } catch (globalErr) {
+      return { status: "error", message: `❌ Server test crashed: ${globalErr.message}` };
     }
   }
 
