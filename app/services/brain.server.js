@@ -281,11 +281,33 @@ TONE: Elegant, direct, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). 
                 return dotProduct(a, b) / (magA * magB);
             };
 
+            // Split search query into lowercase keywords of length > 3 for hybrid scoring boost
+            const queryKeywords = String(searchQuery || "").toLowerCase()
+                .replace(/[^\w\s]/g, "")
+                .split(/\s+/)
+                .filter(w => w.length > 3);
+
             const scoredMatches = allEmbeddings.map(item => {
                 try {
                     // Try parsing the stored JSON array
                     const parsedVector = JSON.parse(item.embedding);
-                    const similarity = calcCosineSimilarity(parsedVector, queryEmbedding);
+                    let similarity = calcCosineSimilarity(parsedVector, queryEmbedding);
+                    
+                    // Hybrid Search Keyword Boost!
+                    // If the product payload contains any search query keywords, apply a direct similarity boost!
+                    const lowerPayload = String(item.textPayload || "").toLowerCase();
+                    let boost = 0;
+                    
+                    queryKeywords.forEach(kw => {
+                        if (lowerPayload.includes(kw)) {
+                            // Boost heavily if it matches direct collection names or target keywords like vastu/zodiac/shiva
+                            const isSpecificCategory = ["zodiac", "vastu", "shiva", "ganesha", "buddha", "aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"].includes(kw);
+                            boost += isSpecificCategory ? 0.20 : 0.08;
+                        }
+                    });
+                    
+                    similarity += boost;
+                    
                     return { productId: item.productId, similarity, textPayload: item.textPayload };
                 } catch (err) {
                     // Fallback in case of string parsing issues
