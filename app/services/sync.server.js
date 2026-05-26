@@ -16,28 +16,66 @@ export const ProductSyncService = {
         console.log("🔄 Starting Shopify Product Sync & Vectorization...");
         
         try {
-            // 1. Fetch products from Shopify Catalog
-            const response = await admin.graphql(`
-                query {
-                    products(first: 100) {
-                        edges {
-                            node {
-                                id
-                                title
-                                handle
-                                description(truncateAt: 1000)
-                                productType
-                                vendor
-                                tags
+            // 1. Fetch ALL products from Shopify Catalog using a paginated loop
+            let products = [];
+            let hasNextPage = true;
+            let cursor = null;
+
+            while (hasNextPage) {
+                console.log(`📡 Fetching products batch (cursor: ${cursor})...`);
+                const response = await admin.graphql(`
+                    query getProducts($cursor: String) {
+                        products(first: 50, after: $cursor) {
+                            pageInfo {
+                                hasNextPage
+                                endCursor
+                            }
+                            edges {
+                                node {
+                                    id
+                                    title
+                                    handle
+                                    description(truncateAt: 1000)
+                                    productType
+                                    vendor
+                                    tags
+                                    metafields(first: 20) {
+                                        edges {
+                                            node {
+                                                namespace
+                                                key
+                                                value
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
+                `, { variables: { cursor } });
+
+                const json = await response.json();
+                
+                if (json.errors) {
+                    console.error("GraphQL errors:", json.errors);
+                    throw new Error("GraphQL Error: " + JSON.stringify(json.errors));
                 }
-            `);
-            const json = await response.json();
-            const products = json.data?.products?.edges.map(e => e.node) || [];
-            
-            console.log(`📦 Fetched ${products.length} products from Shopify. Starting embedding generation...`);
+
+                const batchProducts = json.data?.products?.edges.map(e => e.node) || [];
+                products = products.concat(batchProducts);
+
+                const pageInfo = json.data?.products?.pageInfo;
+                hasNextPage = pageInfo?.hasNextPage || false;
+                cursor = pageInfo?.endCursor || null;
+
+                // Safety break to prevent infinite loops in massive catalogs
+                if (products.length > 2000) {
+                    console.warn("⚠️ Reached safety limit of 2000 products during sync.");
+                    break;
+                }
+            }
+
+            console.log(`📦 Fetched ${products.length} products total from Shopify. Starting embedding generation...`);
 
             const genAI = new GoogleGenerativeAI(apiKey);
             const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
@@ -46,8 +84,19 @@ export const ProductSyncService = {
             let skippedCount = 0;
 
             for (const p of products) {
-                // Construct the payload text that captures structural & emotional vibe
-                const textPayload = `Title: ${p.title} | Type: ${p.productType || "Artwork"} | Vendor: ${p.vendor || "Art Assistant"} | Tags: ${(p.tags || []).join(", ")} | Description: ${p.description || ""}`.trim();
+                // Build a rich text snippet representing all available product metafields
+                let metafieldsText = "";
+                if (p.metafields?.edges) {
+                    p.metafields.edges.forEach(edge => {
+                        const m = edge.node;
+                        if (m && m.value) {
+                            metafieldsText += ` | Metafield ${m.namespace}.${m.key}: ${m.value}`;
+                        }
+                    });
+                }
+
+                // Construct the payload text that captures structural, emotional, Vastu, and custom metafield details!
+                const textPayload = `Title: ${p.title} | Type: ${p.productType || "Artwork"} | Vendor: ${p.vendor || "Art Assistant"} | Tags: ${(p.tags || []).join(", ")} | Description: ${p.description || ""}${metafieldsText}`.trim();
 
                 // Check if already vectorized and unchanged (optimization)
                 const existing = await prisma.productEmbedding.findUnique({

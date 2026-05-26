@@ -87,7 +87,7 @@ export const AntigravityBrain = {
         }];
 
         // System prompt for the ReAct Interviewer
-        const systemPrompt = `You are the "Art Assistant", an elite interior design consultant.
+        const systemPrompt = `You are the "Art Assistant", a friendly, direct, and elite interior design consultant.
 YOUR GOAL: Guide the customer warm-heartedly to help them find the *perfect* painting for their room.
 
 We have a 4-parameter checklist we need to collect before we can run a high-quality curation search:
@@ -96,8 +96,10 @@ We have a 4-parameter checklist we need to collect before we can run a high-qual
 3. Mood/Vibe (e.g., Calming, Spiritual/Devotional, Bold & Energetic, Introspective)
 4. Wall Size (e.g., Small, Medium, Large)
 
-🛑 CRITICAL RULE: DO NOT search or curate products unless you have gathered at least 3 of these 4 parameters!
-If you have collected less than 3, you MUST call 'save_customer_preferences' with any newly extracted details, and then ask a warm, highly-personalized clarifying question to gather the remaining information.
+🛑 CRITICAL STYLE RULE: Keep your replies extremely short, direct, and straight-to-the-point (1-2 sentences maximum!). Be direct, friendly, and do not repeat long, wordy descriptions or summaries. Answer the user's specific query immediately and then ask a short, single, direct clarifying question for any missing parameters.
+
+🛑 CRITICAL FUNCTION RULE: DO NOT search or curate products unless you have gathered at least 3 of these 4 parameters!
+If you have collected less than 3, you MUST call 'save_customer_preferences' with any newly extracted details, and then ask a short, direct clarifying question to gather the remaining information.
 
 CURRENT PREFERENCES ALREADY GATHERED:
 * Room Type: ${session.roomType || "Not specified yet"}
@@ -108,7 +110,7 @@ CURRENT PREFERENCES ALREADY GATHERED:
 If the user asks about Vastu, call 'get_vastu_rules' to retrieve elemental guidance for that direction.
 Once you have collected 3 or more preferences, call 'search_vector_database' with a highly descriptive search query representing their combined space needs (e.g., 'calm blue abstract bedroom landscape painting').
 
-TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do not output markdown blocks for your tool calls.`;
+TONE: Elegant, direct, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do not output markdown blocks for your tool calls.`;
 
         // Attempt Gemini 2.5/2.0/1.5 Flash Reasoning Loop
         try {
@@ -190,7 +192,7 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
                     // Otherwise, send preference confirmation back to model to get its conversational follow-up
                     const toolResponse = { status: "preferences_saved", current: { roomType: session.roomType, colorPalette: session.colorPalette, moodVibe: session.moodVibe, wallSize: session.wallSize } };
                     const followupResult = await chat.sendMessage([
-                        { text: `[Tool Output: Preferences saved successfully. Current state: ${JSON.stringify(toolResponse)}] Please continue the interview and ask the user for one of the missing parameters.` }
+                        { text: `[Tool Output: Preferences saved successfully. Current state: ${JSON.stringify(toolResponse)}] Please continue the interview and ask the user for one of the missing parameters. REMINDER: Keep your reply extremely short (1-2 sentences maximum), direct, and straight-to-the-point!` }
                     ]);
 
                     const botReply = followupResult.response.text();
@@ -207,7 +209,7 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
 
                     // Send Vastu details back to the agent to formulate the pitch
                     const followupResult = await chat.sendMessage([
-                        { text: `[Tool Output: Vastu details for ${direction} are: ${JSON.stringify(vastuAdvice)}]. Explain these guidelines to the user, and if you have 3 parameters, offer to search; otherwise, ask a clarifying question.` }
+                        { text: `[Tool Output: Vastu details for ${direction} are: ${JSON.stringify(vastuAdvice)}]. Explain these guidelines extremely concisely (1-2 sentences maximum), and if you have 3 parameters, offer to search; otherwise, ask a short, direct clarifying question.` }
                     ]);
 
                     // Log log to DB

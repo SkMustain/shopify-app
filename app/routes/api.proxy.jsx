@@ -39,12 +39,23 @@ export const action = async ({ request }) => {
     const apiKey = (apiKeyObj?.value || process.env.GEMINI_API_KEY || "").trim();
 
     // Trigger an asynchronous/lazy catalog vector sync in the background if empty
+    // Trigger an asynchronous/lazy catalog vector sync in the background if empty or incomplete
     const vectorCount = await prisma.productEmbedding.count();
-    if (vectorCount === 0 && apiKey) {
-        console.log("⚡ Vector database is empty. Lazy-triggering auto-sync in background...");
+    const isSyncTriggerMessage = userMessage.toLowerCase().includes("sync catalog") || userMessage.toLowerCase().includes("update catalog") || payloadTag === "SYNC_CATALOG";
+    
+    if ((vectorCount < 200 || isSyncTriggerMessage) && apiKey) {
+        console.log(`⚡ Catalog sync triggered (DB count: ${vectorCount}, forced: ${isSyncTriggerMessage}). Running in background...`);
         ProductSyncService.syncAll(admin, apiKey).catch(err => {
             console.error("Lazy sync failed:", err);
         });
+        
+        if (isSyncTriggerMessage) {
+            return Response.json({
+                reply: "🔄 Catalog sync has been successfully triggered in the background! I am indexing all 1000+ paintings with their detailed descriptions, Vastu rules, and FAQs. This will take just a few moments to complete! ✨",
+                type: "actions",
+                data: [{ label: "Start Over 🏠", payload: "RESET_FLOW" }]
+            }, { headers: cors?.headers || {} });
+        }
     }
 
     const sessionId = session.id;
