@@ -39,6 +39,13 @@ export const ProductSyncService = {
                                     productType
                                     vendor
                                     tags
+                                    collections(first: 10) {
+                                        edges {
+                                            node {
+                                                title
+                                            }
+                                        }
+                                    }
                                     metafields(first: 20) {
                                         edges {
                                             node {
@@ -84,6 +91,15 @@ export const ProductSyncService = {
             let skippedCount = 0;
 
             for (const p of products) {
+                // Build a rich text snippet representing all collections this product belongs to
+                let collectionsText = "";
+                if (p.collections?.edges) {
+                    const titles = p.collections.edges.map(e => e.node?.title).filter(Boolean);
+                    if (titles.length > 0) {
+                        collectionsText = ` | Collections: ${titles.join(", ")}`;
+                    }
+                }
+
                 // Build a rich text snippet representing all available product metafields
                 let metafieldsText = "";
                 if (p.metafields?.edges) {
@@ -95,8 +111,8 @@ export const ProductSyncService = {
                     });
                 }
 
-                // Construct the payload text that captures structural, emotional, Vastu, and custom metafield details!
-                const textPayload = `Title: ${p.title} | Type: ${p.productType || "Artwork"} | Vendor: ${p.vendor || "Art Assistant"} | Tags: ${(p.tags || []).join(", ")} | Description: ${p.description || ""}${metafieldsText}`.trim();
+                // Construct the payload text that captures structural, emotional, Vastu, collections, and custom metafield details!
+                const textPayload = `Title: ${p.title} | Type: ${p.productType || "Artwork"} | Vendor: ${p.vendor || "Art Assistant"} | Tags: ${(p.tags || []).join(", ")} | Description: ${p.description || ""}${collectionsText}${metafieldsText}`.trim();
 
                 // Check if already vectorized and unchanged (optimization)
                 const existing = await prisma.productEmbedding.findUnique({
