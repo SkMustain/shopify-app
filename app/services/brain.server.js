@@ -118,11 +118,22 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
                 systemInstruction: systemPrompt 
             });
 
+            // Filter and ensure history alternates strictly between 'user' and 'model'
+            const cleanHistory = [];
+            let expectedRole = "user";
+            for (const h of history.slice(0, -1)) {
+                const role = h.role === 'bot' ? 'model' : 'user';
+                if (role === expectedRole && h.message && h.message.trim() !== "") {
+                    cleanHistory.push({
+                        role: role,
+                        parts: [{ text: h.message }]
+                    });
+                    expectedRole = expectedRole === "user" ? "model" : "user";
+                }
+            }
+
             const chat = model.startChat({
-                history: history.slice(0, -1).map(h => ({
-                    role: h.role === 'bot' ? 'model' : 'user',
-                    parts: [{ text: h.message }]
-                }))
+                history: cleanHistory
             });
 
             const result = await chat.sendMessage(text);
@@ -135,7 +146,7 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
 
                 // A. Handle: Save Preferences
                 if (functionCall.name === "save_customer_preferences") {
-                    const args = functionCall.args;
+                    const args = functionCall.args || {};
                     session = await prisma.agentSession.update({
                         where: { id: sessionId },
                         data: {

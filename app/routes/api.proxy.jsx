@@ -279,20 +279,22 @@ Return ONLY the raw JSON. No markdown formatting.`;
     const agentResponse = await AntigravityBrain.process(activeMessage, sessionId, admin, apiKey);
 
     // Formulate final response structure for storefront chat widget
+    const buttons = agentResponse.action ? [
+      { label: "Vastu Advice 🧭", payload: "FLOW_GUIDE:VASTU" },
+      { label: "Change Colors 🌈", payload: "FLOW_GUIDE:COLORS" },
+      { label: "Start Over 🏠", payload: "RESET_FLOW" }
+    ] : [
+      { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
+      { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" },
+      { label: "Start Over 🏠", payload: "RESET_FLOW" }
+    ];
+
     const finalResponse = {
       reply: agentResponse.reply,
       type: agentResponse.action ? "carousel" : "actions",
       carousel: agentResponse.action?.data || [],
-      // Standard follow-up buttons if not curating products yet
-      actions: agentResponse.action ? [
-        { label: "Vastu Advice 🧭", payload: "FLOW_GUIDE:VASTU" },
-        { label: "Change Colors 🌈", payload: "FLOW_GUIDE:COLORS" },
-        { label: "Start Over 🏠", payload: "RESET_FLOW" }
-      ] : [
-        { label: "📸 Upload My Room Photo", payload: "FLOW_VISUAL:START" },
-        { label: "🖼 Help Me Choose", payload: "FLOW_GUIDE:START" },
-        { label: "Start Over 🏠", payload: "RESET_FLOW" }
-      ]
+      actions: buttons,
+      data: buttons // Set both keys for absolute compatibility with different widget parsing versions
     };
 
     return Response.json(finalResponse, { headers: cors?.headers || {} });
