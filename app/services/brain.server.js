@@ -461,8 +461,9 @@ Do not return any markdown blocks or outer strings. Just raw JSON.`;
         if (!admin) return [];
         try {
             const cleanQuery = query.replace(/[^\w\s-]/g, "").trim();
-            // Pass cleanQuery directly to let Shopify's native search handle it fuzzily!
-            const graphQuery = cleanQuery || "status:active";
+            const graphQuery = cleanQuery 
+                ? `(title:${cleanQuery}* OR tag:${cleanQuery}*)` 
+                : "status:active";
 
             const response = await admin.graphql(
                 `#graphql
@@ -480,7 +481,27 @@ Do not return any markdown blocks or outer strings. Just raw JSON.`;
                 { variables: { q: graphQuery } }
             );
             const json = await response.json();
-            const items = json.data?.products?.edges.map(e => e.node) || [];
+            let items = json.data?.products?.edges.map(e => e.node) || [];
+
+            // BULLETPROOF FAILSAFE: If no products match, fetch the latest 10 products from catalog
+            if (items.length === 0) {
+                console.log("🎒 executeShopifyGraphQLSearch returned 0 results. Activating failsafe...");
+                const failsafeResponse = await admin.graphql(`
+                    query {
+                        products(first: 10) {
+                            edges {
+                                node {
+                                    title handle vendor
+                                    variants(first: 1) { edges { node { id price } } }
+                                    featuredImage { url }
+                                }
+                            }
+                        }
+                    }
+                `);
+                const failsafeJson = await failsafeResponse.json();
+                items = failsafeJson.data?.products?.edges.map(e => e.node) || [];
+            }
 
             return items.map(node => ({
                 title: node.title,
