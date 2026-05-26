@@ -461,9 +461,8 @@ Do not return any markdown blocks or outer strings. Just raw JSON.`;
         if (!admin) return [];
         try {
             const cleanQuery = query.replace(/[^\w\s-]/g, "").trim();
-            const graphQuery = cleanQuery 
-                ? `(title:${cleanQuery}* OR tag:${cleanQuery}*)` 
-                : "status:active";
+            // Pass cleanQuery directly to let Shopify's native search handle it fuzzily!
+            const graphQuery = cleanQuery || "status:active";
 
             const response = await admin.graphql(
                 `#graphql
