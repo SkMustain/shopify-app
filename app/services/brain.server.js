@@ -1,48 +1,84 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import prisma from "../db.server.js";
 
 export const AntigravityBrain = {
 
-    async process(textInput, history = [], admin, apiKey) {
-        // --- 1. DEFENSIVE INPUT HANDLING ---
-        // Ensure text is a string and not empty.
+    /**
+     * Core Entry Point: Processes user inputs through a tool-driven Reasoning Loop (ReAct).
+     * Automatically extracts preferences, queries the vector database, and curates products.
+     */
+    async process(textInput, sessionId, admin, apiKey) {
         const text = String(textInput || "").trim();
+        console.log(`🧠 AntigravityBrain v5.0 (ReAct Agent) processing session [${sessionId}]: "${text.slice(0, 30)}..."`);
 
-        console.log(`🧠 AntigravityBrain v4.10 (Gemini 2.0 + 1.5 Fallback) Processing: "${text.slice(0, 20)}..."`);
-
-        // --- 2. API KEY CHECK ---
+        // --- 1. API KEY CHECK ---
         if (!apiKey) {
-            console.warn("⚠️ No API Key provided.");
+            console.warn("⚠️ No API Key provided. Entering Resilient Safe Mode.");
             return this.getResilientResponse(admin, text);
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
 
-        // Fetch context safely (never throws)
-        const storeContext = await this.fetchStoreContext(admin);
+        // --- 2. RETRIEVE OR INITIALIZE SESSION STATE ---
+        let session = await prisma.agentSession.findUnique({
+            where: { id: sessionId }
+        });
 
-        // --- DEFINE TOOLS & PROMPT ---
+        if (!session) {
+            session = await prisma.agentSession.create({
+                data: {
+                    id: sessionId,
+                    collectedState: "INTERVIEWING",
+                    rawHistoryJson: "[]"
+                }
+            });
+        }
+
+        // Parse previous conversation history
+        let history = [];
+        try {
+            history = JSON.parse(session.rawHistoryJson || "[]");
+        } catch (e) {
+            history = [];
+        }
+
+        // Add user's latest message to history
+        history.push({ role: "user", message: text });
+
+        // --- 3. DEFINE TOOLS & FUNCTION SCHEMAS ---
         const tools = [{
             functionDeclarations: [
                 {
-                    name: "search_products",
-                    description: "Search for art products in the catalog based on user query, budget, key color, or theme.",
+                    name: "save_customer_preferences",
+                    description: "Save extracted customer interior design preferences. Call this as soon as you identify roomType, colorPalette, moodVibe, or wallSize in the conversation.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            query: { type: "STRING", description: "The main search keywords (e.g. 'abstract landscape', 'shiva', 'modern art')" },
-                            max_price: { type: "NUMBER", description: "Maximum budget in INR (e.g. 5000)" },
-                            color: { type: "STRING", description: "Dominant color filter if needed" }
+                            roomType: { type: "STRING", description: "e.g. Living Room, Bedroom, Office, Pooja Room" },
+                            colorPalette: { type: "STRING", description: "e.g. Cool Blues, Warm Earth Tones, Bold Gold, Minimalist White" },
+                            moodVibe: { type: "STRING", description: "e.g. Calming, Energetic, Devotional, Introspective, Modern" },
+                            wallSize: { type: "STRING", description: "e.g. Small, Medium, Large, Wide" }
+                        }
+                    }
+                },
+                {
+                    name: "search_vector_database",
+                    description: "Perform a semantic vector database search to find paintings in the store catalog matching a descriptive art style, color, or vibe.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            query: { type: "STRING", description: "Detailed search query (e.g. 'calm blue abstract bedroom canvas painting')" }
                         },
                         required: ["query"]
                     }
                 },
                 {
-                    name: "get_vastu_advice",
-                    description: "Get Vastu Shastra rules for a specific direction (North, South, East, West).",
+                    name: "get_vastu_rules",
+                    description: "Get Vastu Shastra rules, elemental colors, and themes for a compass direction.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            direction: { type: "STRING", description: "The compass direction (e.g. 'North', 'South-East')" }
+                            direction: { type: "STRING", description: "Compass direction (e.g. North, South, East, West, North-East)" }
                         },
                         required: ["direction"]
                     }
@@ -50,227 +86,409 @@ export const AntigravityBrain = {
             ]
         }];
 
+        // System prompt for the ReAct Interviewer
         const systemPrompt = `You are the "Art Assistant", an elite interior design consultant.
-        YOUR GOAL: Help the customer find the *perfect* art piece by understanding their specific needs.
+YOUR GOAL: Guide the customer warm-heartedly to help them find the *perfect* painting for their room.
 
-        🛑 **CRITICAL RULE**: DO NOT SEARCH IMMEDIATELY FOR VAGUE REQUESTS.
-        If the user says "I want art" or "Show me paintings", you MUST ask clarifying questions *before* calling the search tool.
+We have a 4-parameter checklist we need to collect before we can run a high-quality curation search:
+1. Room Type (e.g., Living Room, Office, Bedroom)
+2. Color Palette Preference (e.g., Warm Golds, Cool Blues, Greens)
+3. Mood/Vibe (e.g., Calming, Spiritual/Devotional, Bold & Energetic, Introspective)
+4. Wall Size (e.g., Small, Medium, Large)
 
-        YOU SHOULD KNOW AT LEAST ONE OF THESE BEFORE SEARCHING:
-        1. **Room** (Living Room, Bedroom, Office, etc.)
-        2. **Vibe/Theme** (Modern, Traditional, Abstract, Zen, Devotional, etc.)
-        3. **Color Palette** (Warm, Cool, Blue, Gold, etc.)
+🛑 CRITICAL RULE: DO NOT search or curate products unless you have gathered at least 3 of these 4 parameters!
+If you have collected less than 3, you MUST call 'save_customer_preferences' with any newly extracted details, and then ask a warm, highly-personalized clarifying question to gather the remaining information.
 
-        CONVERSATION FLOW EXAMPLES:
-        - **User**: "I want a painting for my room."
-          **You**: "I'd love to help! ✨ Which room are you looking to decorate? (Living Room, Bedroom, etc.)"
-        
-        - **User**: "Living Room."
-          **You**: "Great choice! 🛋️ What kind of vibe or colors are you going for? (e.g., Modern, Cozy, Bold, Spiritual, Blue, Gold)"
+CURRENT PREFERENCES ALREADY GATHERED:
+* Room Type: ${session.roomType || "Not specified yet"}
+* Color Palette: ${session.colorPalette || "Not specified yet"}
+* Mood/Vibe: ${session.moodVibe || "Not specified yet"}
+* Wall Size: ${session.wallSize || "Not specified yet"}
 
-        - **User**: "I want something Modern and Blue."
-          **You**: "Understood. Modern Blue Living Room art coming up! 🎨" -> [CALL SEARCH TOOL: "Modern Blue Abstract Art"]
+If the user asks about Vastu, call 'get_vastu_rules' to retrieve elemental guidance for that direction.
+Once you have collected 3 or more preferences, call 'search_vector_database' with a highly descriptive search query representing their combined space needs (e.g., 'calm blue abstract bedroom landscape painting').
 
-        STORE KNOWLEDGE (Ground Truth):
-        - Available Collections: ${storeContext.collections}
-        - Product Types: ${storeContext.types}
-        - We specialize in: Premium Canvas, Vastu Art, and Modern Decor.
-        - Free Shipping in India.
+TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do not output markdown blocks for your tool calls.`;
 
-        BEHAVIOR GUIDELINES:
-        1. **ACTIVE LISTENING**: Acknowledge user needs.
-        2. **CONSULTANT MODE**: Ask clarifying questions if vague.
-        3. **VASTU EXPERT**: Immediate advice for directions.
-        4. **TONE**: Warm, Professional, Artistic. Use emojis (✨, 🎨).
-        `;
-
-        // --- ATTEMPT 1: GEMINI 2.0 FLASH (User Choice - Experimental/Quotas) ---
-        // --- ATTEMPT 1: GEMINI 2.0 FLASH (Confirmed Available) ---
+        // Attempt Gemini 2.0 Flash Reasoning Loop
         try {
-            console.log("🚀 Attempting Gemini 2.0 Flash (Primary)...");
-            return await this.runTraceWithRetry(genAI, "gemini-2.0-flash", systemPrompt, tools, history, text, admin);
-        } catch (e) {
-            console.warn("⚠️ Gemini 2.0 Flash Failed. Switching to Lite...", e.message);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-2.0-flash", 
+                tools, 
+                systemInstruction: systemPrompt 
+            });
 
-            // --- ATTEMPT 2: GEMINI 2.0 FLASH LITE (Backup) ---
-            try {
-                console.log("🚀 Attempting Gemini 2.0 Flash Lite (Backup)...");
-                return await this.runTraceWithRetry(genAI, "gemini-2.0-flash-lite", systemPrompt, tools, history, text, admin);
-            } catch (e2) {
-                console.error("❌ ALL AI Models Failed. Entering RESILIENT MODE.", e2.message);
-                // Fallback to local logic
-                return await this.getResilientResponse(admin, text);
+            const chat = model.startChat({
+                history: history.slice(0, -1).map(h => ({
+                    role: h.role === 'bot' ? 'model' : 'user',
+                    parts: [{ text: h.message }]
+                }))
+            });
+
+            const result = await chat.sendMessage(text);
+            const response = result.response;
+            const functionCall = response.functionCalls()?.[0];
+
+            // --- 4. REACT AGENT FUNCTION CALL HANDLING ---
+            if (functionCall) {
+                console.log(`🤖 ReAct Tool Invocation: "${functionCall.name}"`, functionCall.args);
+
+                // A. Handle: Save Preferences
+                if (functionCall.name === "save_customer_preferences") {
+                    const args = functionCall.args;
+                    session = await prisma.agentSession.update({
+                        where: { id: sessionId },
+                        data: {
+                            roomType: args.roomType || session.roomType,
+                            colorPalette: args.colorPalette || session.colorPalette,
+                            moodVibe: args.moodVibe || session.moodVibe,
+                            wallSize: args.wallSize || session.wallSize
+                        }
+                    });
+
+                    // Count how many parameters we have now
+                    const paramCount = [session.roomType, session.colorPalette, session.moodVibe, session.wallSize].filter(Boolean).length;
+
+                    if (paramCount >= 3) {
+                        // If we hit the threshold, immediately execute vector search on their behalf
+                        const searchQuery = `${session.moodVibe || ""} ${session.colorPalette || ""} ${session.roomType || ""} painting`.trim();
+                        console.log(`🚀 Preferences threshold reached (${paramCount}/4). Auto-triggering vector search: "${searchQuery}"`);
+                        return await this.executeSemanticSearchAndCuration(genAI, admin, apiKey, session, searchQuery, history);
+                    }
+
+                    // Otherwise, send preference confirmation back to model to get its conversational follow-up
+                    const toolResponse = { status: "preferences_saved", current: { roomType: session.roomType, colorPalette: session.colorPalette, moodVibe: session.moodVibe, wallSize: session.wallSize } };
+                    const followupResult = await chat.sendMessage([
+                        { text: `[Tool Output: Preferences saved successfully. Current state: ${JSON.stringify(toolResponse)}] Please continue the interview and ask the user for one of the missing parameters.` }
+                    ]);
+
+                    const botReply = followupResult.response.text();
+                    history.push({ role: "bot", message: botReply });
+                    await this.saveHistory(sessionId, history);
+
+                    return { reply: botReply, intent: "chat" };
+                }
+
+                // B. Handle: Vastu Rules Query
+                if (functionCall.name === "get_vastu_rules") {
+                    const direction = functionCall.args.direction;
+                    const vastuAdvice = this.localVastuAdvice(direction);
+
+                    // Send Vastu details back to the agent to formulate the pitch
+                    const followupResult = await chat.sendMessage([
+                        { text: `[Tool Output: Vastu details for ${direction} are: ${JSON.stringify(vastuAdvice)}]. Explain these guidelines to the user, and if you have 3 parameters, offer to search; otherwise, ask a clarifying question.` }
+                    ]);
+
+                    // Log log to DB
+                    await prisma.vastuLog.create({
+                        data: { direction: direction, query: text }
+                    });
+
+                    const botReply = followupResult.response.text();
+                    history.push({ role: "bot", message: botReply });
+                    await this.saveHistory(sessionId, history);
+
+                    return { reply: botReply, intent: "vastu_consult" };
+                }
+
+                // C. Handle: Vector Catalog Search & Curation (The Critic)
+                if (functionCall.name === "search_vector_database") {
+                    const searchQuery = functionCall.args.query;
+                    return await this.executeSemanticSearchAndCuration(genAI, admin, apiKey, session, searchQuery, history);
+                }
             }
+
+            // Normal conversational reply (no tool called)
+            const botReply = response.text();
+            history.push({ role: "bot", message: botReply });
+            await this.saveHistory(sessionId, history);
+
+            return { reply: botReply, intent: "chat" };
+
+        } catch (e) {
+            console.error("❌ ReAct Agent Exception. Switching to Resilient Mode...", e);
+            return this.getResilientResponse(admin, text);
         }
     },
 
-    // --- RESILIENT RESPONSE GENERATOR (Safe Mode) ---
-    async getResilientResponse(admin, text) {
+    /**
+     * Executes semantic pgvector search followed by Gemini Curator/Critic curation.
+     */
+    async executeSemanticSearchAndCuration(genAI, admin, apiKey, session, searchQuery, history) {
+        console.log(`🔎 Executing Vector Semantic Search for: "${searchQuery}"`);
+
         try {
-            // 1. Check for Greetings
-            if (text.match(/\b(hi|hello|hey|start|menu|help)\b/i)) {
+            // 1. Generate Query Vector Embedding via Gemini
+            const embedModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const embedResult = await embedModel.embedContent(searchQuery);
+            const queryEmbedding = embedResult.embedding?.values;
+
+            if (!queryEmbedding) throw new Error("Could not generate query embedding.");
+
+            const vectorString = `[${queryEmbedding.join(",")}]`;
+
+            // 2. Perform raw Cosine Similarity Search in PostgreSQL via pgvector operator (<=>)
+            // Cosine similarity = 1 - (embedding <=> query_vector)
+            const vectorMatches = await prisma.$queryRawUnsafe(`
+                SELECT "productId", 1 - ("embedding" <=> $1::vector) AS similarity, "textPayload"
+                FROM "ProductEmbedding"
+                ORDER BY "embedding" <=> $1::vector
+                LIMIT 20;
+            `, vectorString);
+
+            if (!vectorMatches || vectorMatches.length === 0) {
+                console.warn("⚠️ Semantic database search returned 0 vectors. Falling back to text search.");
+                const fallbackProducts = await this.executeShopifyGraphQLSearch(admin, searchQuery);
                 return {
-                    reply: "Hi there! 👋 I'm operating in 'Lite Mode' right now (experiencing high traffic). I can still help you find art! What kind of style or room are you looking for?",
-                    intent: "chat"
-                };
-            }
-
-            // 2. Extract Keywords (Simple Noun Extraction)
-            const stopWords = ["i", "want", "looking", "for", "a", "an", "the", "some", "art", "painting", "can", "you", "show", "me", "pictures", "of", "please", "find"];
-            const keywords = text.toLowerCase().split(" ").filter(w => !stopWords.includes(w)).join(" ");
-
-            // 3. Execute Search
-            // If extracting keywords leaves us with nothing, we default to "Best Sellers"
-            // But we customize the message to be honest.
-            const searchQuery = keywords.length > 2 ? keywords : "";
-
-            let products = await this.executeShopifySearch(admin, searchQuery);
-
-            if (products.length > 0) {
-                if (searchQuery) {
-                    return {
-                        reply: `I'm having a little trouble interpreting complex requests right now, but I found these **${searchQuery}** artworks for you! 🎨`,
-                        action: { type: "carousel", data: products },
-                        intent: "product_search"
-                    };
-                } else {
-                    // Empty query -> Best Sellers
-                    return {
-                        reply: "I'm having a hard time understanding that specific request in Lite Mode. But check out our **Most Popular** collections below! �",
-                        action: { type: "carousel", data: products },
-                        intent: "product_search"
-                    };
-                }
-            } else {
-                // 4. Zero Results even after search -> Show Best Sellers explicitly
-                const bestSellers = await this.executeShopifySearch(admin, "");
-                return {
-                    reply: `I couldn't find a direct match for "${keywords}", but here are some customer favorites you might love! ❤️`,
-                    action: { type: "carousel", data: bestSellers },
+                    reply: `I searched our vector database for "${searchQuery}" but didn't find specific vector matches. Here are some beautiful alternatives! ✨`,
+                    action: { type: "carousel", data: fallbackProducts },
                     intent: "product_search"
                 };
             }
 
-        } catch (e3) {
-            console.error("❌ CRITICAL: Resilient Mode Failed completely:", e3);
-            // ABSOLUTE FINAL FALLBACK - NO CRASH
+            // 3. Fetch Full Product Objects from Shopify for matching product IDs
+            const productIds = vectorMatches.map(m => m.productId);
+            const candidates = await this.fetchShopifyProductsByIds(admin, productIds);
+
+            if (candidates.length === 0) {
+                throw new Error("Failed to load matching product objects from Shopify.");
+            }
+
+            // 4. THE CRITIC/THINKING CAP PHASE
+            // Instruct Gemini 2.0 Flash to act as an elite curator, evaluate candidates, filter out 15, and pitches top 5.
+            const curatorModel = genAI.getGenerativeModel({ 
+                model: "gemini-2.0-flash",
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            const curatorPrompt = `You are an elite interior design art curator.
+The client wants a painting matching this intent profile:
+- Room: ${session.roomType || "Any"}
+- Colors: ${session.colorPalette || "Any"}
+- Vibe/Mood: ${session.moodVibe || "Any"}
+- Size: ${session.wallSize || "Any"}
+
+Here is a candidate list of 20 paintings from our vector catalog (including their full tags and details):
+${JSON.stringify(candidates.map((c, idx) => ({
+    idx: idx,
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    tags: c.tags
+})))}
+
+YOUR TASK (Reasoning Loop):
+1. Evaluate how the theme, description, and tags of each artwork fit the client's intent profile.
+2. Eliminate 15 products that clash with the requested room, colors, or mood.
+3. Select exactly the TOP 5 products.
+4. For each of the top 5, write a highly persuasive custom 2-sentence pitch explaining exactly why it is perfect for their specific space.
+
+Return STRICTLY a JSON object with this exact shape:
+{
+  "rationale": "A warm, artistic 1-2 sentence overall summary of your curation concept.",
+  "selections": [
+    {
+      "productId": "Shopify product ID string",
+      "pitch": "A highly tailored, persuasive 2-sentence pitch explaining why this painting matches their space constraints."
+    }
+  ]
+}
+Do not return any markdown blocks or outer strings. Just raw JSON.`;
+
+            console.log("🧐 Triggering Critic/Curator Analysis on 20 candidates...");
+            const curationResult = await curatorModel.generateContent(curatorPrompt);
+            let rawCurationJson = curationResult.response.text().trim();
+            if (rawCurationJson.startsWith("```json")) {
+                rawCurationJson = rawCurationJson.replace(/```json/g, "").replace(/```/g, "").trim();
+            }
+
+            const curationData = JSON.parse(rawCurationJson);
+            console.log("✨ Curator Curation Successful! Curated selections count:", curationData.selections?.length);
+
+            // 5. Build final Carousel with the Custom Pitches appended
+            const finalCuratedProducts = curationData.selections.map(selection => {
+                const prod = candidates.find(c => c.id === selection.productId);
+                if (!prod) return null;
+                return {
+                    title: prod.title,
+                    price: prod.price,
+                    image: prod.image,
+                    url: prod.url,
+                    variantId: prod.variantId,
+                    vendor: prod.vendor,
+                    pitch: selection.pitch // Inject custom AI Curator pitch!
+                };
+            }).filter(Boolean);
+
+            // Update session collected state
+            await prisma.agentSession.update({
+                where: { id: session.id },
+                data: { collectedState: "CURATED" }
+            });
+
+            // Update conversation history
+            const botResponseText = `${curationData.rationale}\n\nHere are the top 5 masterfully curated paintings for your room: 👇`;
+            history.push({ role: "bot", message: botResponseText });
+            await this.saveHistory(session.id, history);
+
             return {
-                reply: "I'm having a temporary connection issue. You can try searching for 'Abstract' or 'Nature' directly, or use the menu above to browse our collections. �️",
-                intent: "error"
+                reply: botResponseText,
+                action: { type: "carousel", data: finalCuratedProducts },
+                intent: "product_search"
+            };
+
+        } catch (error) {
+            console.error("❌ Curation process failed. Falling back to keyword search.", error);
+            const fallbackProducts = await this.executeShopifyGraphQLSearch(admin, searchQuery);
+            return {
+                reply: `I searched our database for "${searchQuery}"! Here are some beautiful options we have in stock: 👇`,
+                action: { type: "carousel", data: fallbackProducts },
+                intent: "product_search"
             };
         }
     },
 
-    // --- SHARED EXECUTION LOGIC WITH RETRY ---
-    async runTraceWithRetry(genAI, modelName, systemInstruction, tools, history, text, admin, retries = 2) {
-        for (let i = 0; i <= retries; i++) {
-            try {
-                return await this.runTrace(genAI, modelName, systemInstruction, tools, history, text, admin);
-            } catch (e) {
-                console.warn(`Attempt ${i + 1} failed for ${modelName}:`, e.message);
-                if (i === retries) throw e;
-                await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-            }
-        }
-    },
-
-    async runTrace(genAI, modelName, systemInstruction, tools, history, text, admin) {
-        // ... (Same as before)
-        console.log(`🤖 Attempting execution with model: ${modelName}`);
-        const model = genAI.getGenerativeModel({ model: modelName, tools, systemInstruction });
-
-        const chat = model.startChat({
-            history: (history || []).map(h => ({
-                role: h.role === 'bot' ? 'model' : 'user',
-                parts: [{ text: h.message }]
-            }))
+    // --- SHARED HISTORY & PERSISTENCE ---
+    async saveHistory(sessionId, history) {
+        await prisma.agentSession.update({
+            where: { id: sessionId },
+            data: { rawHistoryJson: JSON.stringify(history) }
         });
-
-        const result = await chat.sendMessage(text);
-        const response = result.response;
-        const call = response.functionCalls()?.[0];
-
-        if (call) {
-            if (call.name === "search_products") {
-                const { query, max_price, color } = call.args;
-                const products = await this.executeShopifySearch(admin, query, max_price, color);
-                if (products.length > 0) {
-                    return {
-                        reply: `Here are some beautiful matches for **${query}**! ✨`,
-                        action: { type: "carousel", data: products },
-                        intent: "product_search"
-                    };
-                } else {
-                    return { reply: `I couldn't find matches for "${query}". Try "Abstract" or "Nature"?`, intent: "chat" };
-                }
-            }
-            if (call.name === "get_vastu_advice") {
-                const advice = await this.executeVastuQuery(admin, call.args.direction);
-                const followUpSearch = await this.executeShopifySearch(admin, `Vastu ${call.args.direction} ${advice.keywords || ''}`);
-                return {
-                    reply: `**Vastu Insight for ${call.args.direction}:** ${advice.recommendation}\n\nSelected auspicious pieces: 👇`,
-                    action: { type: "carousel", data: followUpSearch },
-                    intent: "vastu_consult"
-                };
-            }
-        }
-
-        return { reply: response.text(), intent: "chat" };
     },
 
-    // --- HELPERS ---
-    async fetchStoreContext(admin) {
-        try {
-            if (!admin) return { collections: "General Art", types: "Canvas" };
-            const response = await admin.graphql(`{ collections(first: 10) { edges { node { title } } } productTypes(first: 10) { edges { node } } }`);
-            const json = await response.json();
-            const collections = json.data?.collections?.edges.map(e => e.node.title).join(", ") || "Art, Canvas";
-            const types = json.data?.productTypes?.edges.map(e => e.node).join(", ") || "Painting";
-            return { collections, types };
-        } catch (e) { return { collections: "General Art", types: "Canvas" }; }
-    },
-    async executeShopifySearch(admin, query, maxPrice, color) {
-        // Validation
-        if (!admin) return [];
-
-        let finalQuery = query;
-        if (color && query && !query.includes(color)) finalQuery = `${query} ${color}`;
-
-        let graphqlQuery = "";
-        let variables = {};
-
-        if (!finalQuery || finalQuery.trim() === "") {
-            graphqlQuery = `#graphql query { products(first: 10, sortKey: BEST_SELLING) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
-            variables = {};
-        } else {
-            graphqlQuery = `#graphql query ($q: String!) { products(first: 10, query: $q) { edges { node { id, title, handle, featuredImage { url }, priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }`;
-            variables = { q: finalQuery };
-        }
-
-        try {
-            const response = await admin.graphql(graphqlQuery, { variables });
-            const json = await response.json();
-
-            let items = json.data?.products?.edges.map(e => e.node) || [];
-
-            if (maxPrice) items = items.filter(p => parseFloat(p.priceRangeV2.minVariantPrice.amount) <= maxPrice);
-
-            return items.map(node => ({
-                title: node.title,
-                price: `${node.priceRangeV2.minVariantPrice.amount} ${node.priceRangeV2.minVariantPrice.currencyCode}`,
-                image: node.featuredImage?.url,
-                url: `/products/${node.handle}`,
-                vendor: "Art Assistant"
-            }));
-        } catch (e) {
-            console.error("Shopify Search GraphQL Error:", e);
-            return [];
-        }
-    },
-    async executeVastuQuery(admin, direction) {
-        const rules = { "North": { recommendation: "Water/Wealth (Blue, Waterfall)", keywords: "Water Blue" }, "South": { recommendation: "Fire/Fame (Red, Horses)", keywords: "Red Fire" }, "East": { recommendation: "Air/Social (Green, Plants)", keywords: "Green Forest" }, "West": { recommendation: "Gains (White, Gold)", keywords: "White Gold" }, "North-East": { recommendation: "Sacred (Spiritual, Shiva)", keywords: "Shiva Spiritual" } };
+    // --- HELPER: VASTU ADVICE DICTIONARY ---
+    localVastuAdvice(direction) {
+        const rules = {
+            "North": { recommendation: "Represented by Water and Wealth. Place blue waterfall scenes, flowing rivers, or calm seas to attract prosperity and career growth. Auspicious colors: Blue, Aqua.", keywords: "Water Blue" },
+            "South": { recommendation: "Represented by Fire and Fame. Hang paintings of running red horses, sunrises, or fire elements to attract fame, success, and high energy. Auspicious colors: Red, Orange.", keywords: "Red Fire Horses" },
+            "East": { recommendation: "Represented by Air and Social Growth. Choose green forests, blooming sunlit flora, or rising suns to boost family health and expand social connections. Auspicious colors: Green, Emerald.", keywords: "Green Forest Flora" },
+            "West": { recommendation: "Represented by Space and Gains. Hang golden mountain peaks, white landscapes, or metal reliefs to enhance children's creativity and secure financial gains. Auspicious colors: White, Gold, Silver.", keywords: "Gold White Mountain" },
+            "North-East": { recommendation: "Represented by Spiritual connection. Hang serene spiritual art, Lord Shiva/Adiyogi, or calm skies to foster deep spiritual growth and mental tranquility. Auspicious colors: Light Blue, Yellow.", keywords: "Shiva Spiritual Tranquil" }
+        };
         const safeDir = String(direction || "North");
         const normDir = Object.keys(rules).find(k => safeDir.toLowerCase().includes(k.toLowerCase())) || "North";
         return rules[normDir];
+    },
+
+    // --- HELPER: FETCH SHOPIFY DETAILS BY VECTOR MATCH IDs ---
+    async fetchShopifyProductsByIds(admin, productIds) {
+        if (!admin || !productIds.length) return [];
+        
+        try {
+            // Build a GraphQL query asking for these specific IDs
+            // Shopify allows querying node ID lists using nodes query
+            const response = await admin.graphql(
+                `#graphql
+                query getNodes($ids: [ID!]!) {
+                    nodes(ids: $ids) {
+                        ... on Product {
+                            id
+                            title
+                            handle
+                            description(truncateAt: 300)
+                            productType
+                            vendor
+                            tags
+                            variants(first: 1) {
+                                edges {
+                                    node {
+                                        id
+                                        price
+                                    }
+                                }
+                            }
+                            featuredImage {
+                                url
+                            }
+                        }
+                    }
+                }`,
+                { variables: { ids: productIds } }
+            );
+
+            const json = await response.json();
+            const nodes = json.data?.nodes || [];
+
+            return nodes.filter(Boolean).map(node => ({
+                id: node.id,
+                title: node.title,
+                description: node.description,
+                tags: node.tags,
+                price: node.variants?.edges?.[0]?.node?.price ? `₹${node.variants.edges[0].node.price}` : "Price N/A",
+                image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+                url: `/products/${node.handle}`,
+                variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "",
+                vendor: node.vendor || "Art Assistant"
+            }));
+
+        } catch (e) {
+            console.error("fetchShopifyProductsByIds Error:", e);
+            return [];
+        }
+    },
+
+    // --- FALLBACK: GRAPHQL KEYWORD SEARCH ---
+    async executeShopifyGraphQLSearch(admin, query) {
+        if (!admin) return [];
+        try {
+            const cleanQuery = query.replace(/[^\w\s-]/g, "").trim();
+            const graphQuery = cleanQuery 
+                ? `(title:${cleanQuery}* OR tag:${cleanQuery}*)` 
+                : "status:active";
+
+            const response = await admin.graphql(
+                `#graphql
+                query ($q: String!) {
+                    products(first: 10, query: $q) {
+                        edges {
+                            node {
+                                title handle vendor
+                                variants(first: 1) { edges { node { id price } } }
+                                featuredImage { url }
+                            }
+                        }
+                    }
+                }`,
+                { variables: { q: graphQuery } }
+            );
+            const json = await response.json();
+            const items = json.data?.products?.edges.map(e => e.node) || [];
+
+            return items.map(node => ({
+                title: node.title,
+                price: node.variants?.edges?.[0]?.node?.price ? `₹${node.variants.edges[0].node.price}` : "Price N/A",
+                image: node.featuredImage?.url || "https://placehold.co/600x400?text=No+Image",
+                url: `/products/${node.handle}`,
+                variantId: node.variants?.edges?.[0]?.node?.id?.split('/').pop() || "",
+                vendor: node.vendor || "Art Assistant"
+            }));
+        } catch (e) {
+            console.error("executeShopifyGraphQLSearch Error:", e);
+            return [];
+        }
+    },
+
+    // --- RESILIENT SAFE FALLBACK MODE ---
+    async getResilientResponse(admin, text) {
+        try {
+            if (text.match(/\b(hi|hello|hey|start|menu|help)\b/i)) {
+                return {
+                    reply: "Hi there! 👋 I'm operating in 'Resilient Mode' right now. I can still help you find paintings. What kind of style or room are you decorating?",
+                    intent: "chat"
+                };
+            }
+            const keywords = text.toLowerCase().split(" ").filter(w => w.length > 3).join(" ");
+            const products = await this.executeShopifyGraphQLSearch(admin, keywords);
+            return {
+                reply: `I searched our catalog for "${keywords || 'artworks'}"! Here are some beautiful suggestions: 👇`,
+                action: { type: "carousel", data: products },
+                intent: "product_search"
+            };
+        } catch (e) {
+            return {
+                reply: "I'm having a little trouble connecting. Please feel free to browse our main navigation collections! 🖼️",
+                intent: "error"
+            };
+        }
     }
 };

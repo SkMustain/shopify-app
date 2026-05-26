@@ -2,15 +2,14 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector]
 }
 
 model Session {
@@ -58,4 +57,25 @@ model AppSetting {
   id    Int    @id @default(autoincrement())
   key   String @unique
   value String
+}
+
+model ProductEmbedding {
+  id          String   @id @default(uuid())
+  productId   String   @unique
+  embedding   Unsupported("vector(768)") // 768 dimensions for text-embedding-004
+  textPayload String   // Stores the concatenated text used to generate the embedding
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgentSession {
+  id               String   @id // Maps to Shopify session ID
+  roomType         String?
+  colorPalette     String?
+  moodVibe         String?
+  wallSize         String?
+  collectedState   String   @default("INTERVIEWING") // INTERVIEWING, SEARCHING, CURATING
+  rawHistoryJson   String   @default("[]")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
