@@ -2,14 +2,12 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider   = "postgresql"
-  url        = env("DATABASE_URL")
-  extensions = [pgvector]
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Session {
@@ -62,7 +60,7 @@ model AppSetting {
 model ProductEmbedding {
   id          String   @id @default(uuid())
   productId   String   @unique
-  embedding   Unsupported("vector(768)") // 768 dimensions for text-embedding-004
+  embedding   String   // Stringified JSON float array of 768 dimensions
   textPayload String   // Stores the concatenated text used to generate the embedding
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -225,26 +225,44 @@ TONE: Elegant, warm, artistic, and friendly. Use emojis (✨, 🎨, 🛋️). Do
 
             if (!queryEmbedding) throw new Error("Could not generate query embedding.");
 
-            const vectorString = `[${queryEmbedding.join(",")}]`;
+            // 2. Fetch all stored embeddings from the database
+            const allEmbeddings = await prisma.productEmbedding.findMany();
 
-            // 2. Perform raw Cosine Similarity Search in PostgreSQL via pgvector operator (<=>)
-            // Cosine similarity = 1 - (embedding <=> query_vector)
-            const vectorMatches = await prisma.$queryRawUnsafe(`
-                SELECT "productId", 1 - ("embedding" <=> $1::vector) AS similarity, "textPayload"
-                FROM "ProductEmbedding"
-                ORDER BY "embedding" <=> $1::vector
-                LIMIT 20;
-            `, vectorString);
-
-            if (!vectorMatches || vectorMatches.length === 0) {
-                console.warn("⚠️ Semantic database search returned 0 vectors. Falling back to text search.");
+            if (!allEmbeddings || allEmbeddings.length === 0) {
+                console.warn("⚠️ Vector database is empty. Falling back to text search.");
                 const fallbackProducts = await this.executeShopifyGraphQLSearch(admin, searchQuery);
                 return {
-                    reply: `I searched our vector database for "${searchQuery}" but didn't find specific vector matches. Here are some beautiful alternatives! ✨`,
+                    reply: `I searched our catalog for "${searchQuery}"! Here are some beautiful options we have in stock: 👇`,
                     action: { type: "carousel", data: fallbackProducts },
                     intent: "product_search"
                 };
             }
+
+            // 3. Compute cosine similarity in memory (extremely fast and lightweight for Shopify catalogs!)
+            const dotProduct = (a, b) => a.reduce((sum, val, i) => sum + val * b[i], 0);
+            const magnitude = (arr) => Math.sqrt(arr.reduce((sum, val) => sum + val * val, 0));
+            const calcCosineSimilarity = (a, b) => {
+                const magA = magnitude(a);
+                const magB = magnitude(b);
+                if (magA === 0 || magB === 0) return 0;
+                return dotProduct(a, b) / (magA * magB);
+            };
+
+            const scoredMatches = allEmbeddings.map(item => {
+                try {
+                    // Try parsing the stored JSON array
+                    const parsedVector = JSON.parse(item.embedding);
+                    const similarity = calcCosineSimilarity(parsedVector, queryEmbedding);
+                    return { productId: item.productId, similarity, textPayload: item.textPayload };
+                } catch (err) {
+                    // Fallback in case of string parsing issues
+                    return { productId: item.productId, similarity: 0, textPayload: item.textPayload };
+                }
+            });
+
+            // Sort descending by similarity score and take top 20
+            scoredMatches.sort((a, b) => b.similarity - a.similarity);
+            const vectorMatches = scoredMatches.slice(0, 20);
 
             // 3. Fetch Full Product Objects from Shopify for matching product IDs
             const productIds = vectorMatches.map(m => m.productId);

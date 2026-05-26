@@ -70,26 +70,22 @@ export const ProductSyncService = {
                         throw new Error("Received empty embedding vector from Gemini.");
                     }
 
-                    // Format embedding array for pgvector string representation: '[0.11,0.22,...]'
-                    const vectorString = `[${embedding.join(",")}]`;
+                    // Stringify embedding array to save as text in the database
+                    const vectorString = JSON.stringify(embedding);
 
-                    // Raw SQL Upsert to handle pgvector column types securely in Prisma
-                    await prisma.$executeRawUnsafe(`
-                        INSERT INTO "ProductEmbedding" ("id", "productId", "embedding", "textPayload", "createdAt", "updatedAt")
-                        VALUES (
-                            gen_random_uuid(), 
-                            $1, 
-                            $2::vector, 
-                            $3, 
-                            NOW(), 
-                            NOW()
-                        )
-                        ON CONFLICT ("productId") 
-                        DO UPDATE SET 
-                            "embedding" = $2::vector, 
-                            "textPayload" = $3, 
-                            "updatedAt" = NOW();
-                    `, p.id, vectorString, textPayload);
+                    // Standard Prisma Upsert (database-agnostic, no pgvector or raw SQL required!)
+                    await prisma.productEmbedding.upsert({
+                        where: { productId: p.id },
+                        update: {
+                            embedding: vectorString,
+                            textPayload: textPayload
+                        },
+                        create: {
+                            productId: p.id,
+                            embedding: vectorString,
+                            textPayload: textPayload
+                        }
+                    });
 
                     updatedCount++;
 
