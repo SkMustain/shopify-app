@@ -608,8 +608,32 @@ Do not return any markdown blocks or outer strings. Just raw JSON.`;
 
             console.log(`🤖 Resilient Safe Mode query formulation: "${keywords}"`);
             const products = await this.executeShopifyGraphQLSearch(admin, keywords);
+
+            // Formulate a beautiful, highly conversational response dynamically based on keywords
+            let customizedReply = "Here are some beautiful paintings masterfully selected for your space: 👇";
+            
+            if (keywords.includes("vastu") && (keywords.includes("office") || keywords.includes("work"))) {
+                customizedReply = "I have selected some highly auspicious Vastu paintings perfect for your office workspace to invite prosperity, focus, and positive energy! 🧭 👇";
+            } else if (keywords.includes("vastu") && keywords.includes("bedroom")) {
+                customizedReply = "Here are some serene Vastu paintings perfect for your bedroom to cultivate peace, tranquility, and harmony! 🧘‍♀️ 👇";
+            } else if (keywords.includes("vastu")) {
+                customizedReply = "I've chosen some beautiful Vastu-compliant paintings to align your walls with positive elemental energies: 🧭 👇";
+            } else if (keywords.includes("zodiac") || keywords.includes("aries") || keywords.includes("leo") || keywords.includes("pisces") || keywords.includes("gemini") || keywords.includes("taurus") || keywords.includes("cancer") || keywords.includes("virgo") || keywords.includes("libra") || keywords.includes("scorpio") || keywords.includes("sagittarius") || keywords.includes("capricorn") || keywords.includes("aquarius")) {
+                const sign = keywords.split(" ").find(w => ["aries", "taurus", "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces"].includes(w)) || "";
+                const formattedSign = sign ? sign.charAt(0).toUpperCase() + sign.slice(1) : "Zodiac Sign";
+                customizedReply = `Here are some stunning celestial ${formattedSign} paintings, handpicked to resonate beautifully with your personal astrological energy! 🌟 👇`;
+            } else if (keywords.includes("bedroom")) {
+                customizedReply = "I've selected some gorgeous, calming paintings perfect for creating a peaceful and cozy sanctuary in your bedroom: 🛌 👇";
+            } else if (keywords.includes("office") || keywords.includes("work")) {
+                customizedReply = "Here is a curated selection of professional, motivating paintings perfect for elevating your office workspace: 💼 👇";
+            } else if (keywords.includes("living") || keywords.includes("lounge")) {
+                customizedReply = "Here is a handpicked selection of stunning, vibrant paintings perfect for making a statement in your living room: 🛋️ 👇";
+            } else if (keywords.trim()) {
+                customizedReply = "I've searched our collection and selected these beautiful matching artworks for your space: 👇";
+            }
+
             return {
-                reply: `I searched our catalog for "${keywords || 'artworks'}"! Here are some beautiful suggestions: 👇`,
+                reply: customizedReply,
                 action: { type: "carousel", data: products },
                 intent: "product_search"
             };
